@@ -13,10 +13,19 @@
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
 {
-    QDir applicationsDir("/usr/share/applications/");
+    QStringList dirPaths = QStandardPaths::standardLocations(QStandardPaths::ApplicationsLocation);
 
-    for (const QFileInfo &file : applicationsDir.entryInfoList(QStringList("*.desktop"), QDir::Files)) {
-        loadDesktopFile(file);
+    // We want the local dirs last so they override the system ones
+    // QStandardPaths gives them to us with the local ones first
+    std::reverse(dirPaths.begin(), dirPaths.end());
+
+    for (const QString &dirPath : dirPaths) {
+        qDebug() << "Loading applications from" << dirPath;
+        QDir applicationsDir(dirPath);
+
+        for (const QFileInfo &file : applicationsDir.entryInfoList(QStringList("*.desktop"), QDir::Files)) {
+            loadDesktopFile(file);
+        }
     }
 
     QHBoxLayout *mainLayout = new QHBoxLayout;
