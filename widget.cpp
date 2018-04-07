@@ -17,7 +17,7 @@ Widget::Widget(QWidget *parent)
         qDebug() << "Loading applications from" << dirPath;
         QDir applicationsDir(dirPath);
 
-        for (const QFileInfo &file : applicationsDir.entryInfoList(QStringList("*.desktop"), QDir::Files)) {
+        for (const QFileInfo &file : applicationsDir.entryInfoList(QStringList("*.desktop"))) {
             loadDesktopFile(file);
         }
     }
