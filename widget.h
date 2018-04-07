@@ -7,6 +7,7 @@
 class QFileInfo;
 class QTreeWidget;
 class QListWidget;
+class QPushButton;
 
 class Widget : public QWidget
 {
@@ -19,18 +20,21 @@ public:
 
 private slots:
     void onMimetypeSelected();
+    void onSetDefaultClicked();
 
 private:
-    void loadDesktopFiles(const QString &dirPath);
     void loadDesktopFile(const QFileInfo &fileInfo);
+    void setDefault(const QString &appName, const QSet<QString> &mimetypes, const QSet<QString> &unselectedMimetypes);
 
     QMultiHash<QString, QString> m_supportedMimetypes;
     QHash<QString, QSet<QString>> m_applications;
+    QHash<QString, QString> m_applicationIcons;
+    QHash<QString, QString> m_applicationNames;
+
     QTreeWidget *m_applicationList;
     QMimeDatabase m_mimeDb;
-    QMimeType m_octetstreamType;
     QListWidget *m_mimetypeList;
-    QHash<QString, QString> m_applicationNames;
+    QPushButton *m_setDefaultButton;
 };
 
 #endif // WIDGET_H
