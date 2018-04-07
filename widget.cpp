@@ -41,7 +41,9 @@ Widget::Widget(QWidget *parent)
     for (const QString &type : types)  {
         QTreeWidgetItem *typeItem = new QTreeWidgetItem(QStringList(type));
         QStringList applications = m_applications[type].toList();
-        std::sort(applications.begin(), applications.end());
+        std::sort(applications.begin(), applications.end(), [=](const QString &a, const QString &b) {
+            return m_applicationNames[a] < m_applicationNames[b];
+        });
         for (const QString &application : applications) {
             QTreeWidgetItem *appItem = new QTreeWidgetItem(QStringList(m_applicationNames[application]));
             appItem->setData(0, Qt::UserRole, application);
