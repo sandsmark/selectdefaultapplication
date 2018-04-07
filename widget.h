@@ -6,6 +6,7 @@
 
 class QFileInfo;
 class QTreeWidget;
+class QListWidget;
 
 class Widget : public QWidget
 {
@@ -23,13 +24,12 @@ private:
     void loadDesktopFiles(const QString &dirPath);
     void loadDesktopFile(const QFileInfo &fileInfo);
 
-    QMultiHash<QString, QString> m_applications;
-    QMultiHash<QString, QString> m_applicationMimetypes;
-    QHash<QString, QSet<QString>> m_mimeSubtypes;
-    QTreeWidget *m_mimeList;
+    QMultiHash<QString, QString> m_supportedMimetypes;
+    QHash<QString, QSet<QString>> m_applications;
+    QTreeWidget *m_applicationList;
     QMimeDatabase m_mimeDb;
     QMimeType m_octetstreamType;
-    QTreeWidget *m_appList;
+    QListWidget *m_mimetypeList;
     QHash<QString, QString> m_applicationNames;
 };
 
