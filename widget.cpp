@@ -13,13 +13,7 @@
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
 {
-    QStringList dirPaths = QStandardPaths::standardLocations(QStandardPaths::ApplicationsLocation);
-
-    // We want the local dirs last so they override the system ones
-    // QStandardPaths gives them to us with the local ones first
-    std::reverse(dirPaths.begin(), dirPaths.end());
-
-    for (const QString &dirPath : dirPaths) {
+    for (const QString &dirPath : QStandardPaths::standardLocations(QStandardPaths::ApplicationsLocation)) {
         qDebug() << "Loading applications from" << dirPath;
         QDir applicationsDir(dirPath);
 
