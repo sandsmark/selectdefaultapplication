@@ -21,6 +21,22 @@ Widget::Widget(QWidget *parent)
             loadDesktopFile(file);
         }
     }
+    // Check that we shit with multiple .desktop files, but some nodisplay files
+    for (const QString &appId : m_supportedMimetypes.uniqueKeys()) {
+        if (!m_desktopFileNames.contains(appId)) {
+            qWarning() << appId << "does not have an associated desktop file!";
+            continue;
+        }
+    }
+
+    // Preload up front, so it doesn't get sluggish when selecting applications supporting a lot
+    for (const QString &mimetypeName : m_supportedMimetypes.values()) {
+        if (m_mimeTypeIcons.contains(mimetypeName)) {
+            continue;
+        }
+        const QMimeType mimetype = m_mimeDb.mimeTypeForName(mimetypeName);
+        m_mimeTypeIcons[mimetypeName] =  QIcon::fromTheme(mimetype.iconName());
+    }
 
     QHBoxLayout *mainLayout = new QHBoxLayout;
     setLayout(mainLayout);
@@ -98,7 +114,7 @@ void Widget::onMimetypeSelected()
         }
         QListWidgetItem *item = new QListWidgetItem(name);
         item->setData(Qt::UserRole, mimetype.name());
-        item->setIcon(QIcon::fromTheme(mimetype.iconName()));
+        item->setIcon(m_mimeTypeIcons[supportedMime]);
         m_mimetypeList->addItem(item);
         item->setSelected(true);
     }
