@@ -150,8 +150,12 @@ void Widget::loadDesktopFile(const QFileInfo &fileInfo)
 
     QStringList mimetypes;
     QString appName;
+    QString appId = fileInfo.fileName();
+    QString iconName;
 
     bool inCorrectGroup = false;
+    bool noDisplay = false;
+
     while (!file.atEnd()) {
         QString line = file.readLine().simplified();
 
@@ -178,23 +182,51 @@ void Widget::loadDesktopFile(const QFileInfo &fileInfo)
 
         if (line.startsWith("Icon")) {
             line.remove(0, line.indexOf('=') + 1);
-            m_applicationIcons[fileInfo.fileName()] = line;
+            iconName = line;
+            continue;
+        }
+
+        if (line.startsWith("Exec")) {
+            line.remove(0, line.indexOf('=') + 1);
+            if (line.isEmpty()) {
+                continue;
+            }
+            QStringList parts = line.split(' ');
+            if (parts.first() == "env" && parts.count() > 2) {
+                line = parts[2];
+            } else {
+                line = parts.first();
+            }
+
+            appId = line;
             continue;
         }
 
         if (line.startsWith("NoDisplay=") && line.contains("true", Qt::CaseInsensitive)) {
-            return;
+            noDisplay = true;
         }
     }
 
-    if (!appName.isEmpty()) {
-        m_applicationNames.insert(fileInfo.fileName(), appName);
-    } else {
-        qWarning() << "Missing name" << fileInfo.fileName();
-    }
 
     if (mimetypes.isEmpty()) {
         return;
+    }
+
+    if (appName.isEmpty()) {
+        qWarning() << "Missing name" << fileInfo.fileName() << appId << mimetypes;
+        appName = appId;
+    }
+
+
+    // If an application has a .desktop file without NoDisplay use that, otherwise use one of the ones with NoDisplay anyways
+    if (!noDisplay || !m_desktopFileNames.contains(appId)) {
+        m_desktopFileNames[appId] = fileInfo.fileName();
+    }
+
+    // Dumb assumption; if it has an icon it probably has the proper name
+    if ((!noDisplay || !m_applicationIcons.contains(appId)) && !iconName.isEmpty()) {
+        m_applicationIcons[appId] = iconName;
+        m_applicationNames[appId] = appName;
     }
 
     for (const QString &readMimeName : mimetypes) {
@@ -205,7 +237,7 @@ void Widget::loadDesktopFile(const QFileInfo &fileInfo)
         }
 
         const QString name = mimetype.name();
-        if (m_supportedMimetypes.contains(fileInfo.fileName(), name)) {
+        if (m_supportedMimetypes.contains(appId, name)) {
             continue;
         }
 
@@ -216,13 +248,19 @@ void Widget::loadDesktopFile(const QFileInfo &fileInfo)
 
         const QString type = parts[0].trimmed();
 
-        m_applications[type].insert(fileInfo.fileName());
-        m_supportedMimetypes.insert(fileInfo.fileName(), name);
+        m_applications[type].insert(appId);
+        m_supportedMimetypes.insert(appId, name);
     }
 }
 
 void Widget::setDefault(const QString &appName, const QSet<QString> &mimetypes, const QSet<QString> &unselectedMimetypes)
 {
+    QString desktopFile = m_desktopFileNames.value(appName);
+    if (desktopFile.isEmpty()) {
+        qWarning() << "invalid" << appName;
+        return;
+    }
+
     const QString filePath = QDir(QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)).absoluteFilePath("mimeapps.list");
     QFile file(filePath);
 
@@ -281,7 +319,7 @@ void Widget::setDefault(const QString &appName, const QSet<QString> &mimetypes, 
     }
 
     for (const QString &mimetype : mimetypes) {
-        file.write(QString(mimetype + '=' + appName + '\n').toUtf8());
+        file.write(QString(mimetype + '=' + m_desktopFileNames[appName] + '\n').toUtf8());
     }
 
     return;

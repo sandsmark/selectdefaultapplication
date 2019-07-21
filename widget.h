@@ -14,7 +14,7 @@ class Widget : public QWidget
     Q_OBJECT
 
 public:
-    Widget(QWidget *parent = 0);
+    Widget(QWidget *parent = nullptr);
     ~Widget();
 
 
@@ -30,6 +30,11 @@ private:
     QHash<QString, QSet<QString>> m_applications;
     QHash<QString, QString> m_applicationIcons;
     QHash<QString, QString> m_applicationNames;
+    QHash<QString, QString> m_desktopFileNames;
+
+    QHash<QString, QString> m_appIdToDesktopFile;
+
+    QHash<QString, QIcon> m_mimeTypeIcons; // for preloading icons, because that's (a bit) slooow
 
     QTreeWidget *m_applicationList;
     QMimeDatabase m_mimeDb;
