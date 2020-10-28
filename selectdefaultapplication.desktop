@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=selectdefaultapplication
+GenericName=Select Default Application
+Comment=Allows you to easily select default application to open files.
+Categories=Utility;
+TryExec=selectdefaultapplication
+Exec=selectdefaultapplication
+Icon=selectdefaultapplication
