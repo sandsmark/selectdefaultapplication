@@ -122,6 +122,8 @@ void Widget::onMimetypeSelected()
         }
         if (name.isEmpty()) {
             name = mimetype.name().trimmed();
+        } else {
+            name += '\n' + mimetype.name();
         }
         QListWidgetItem *item = new QListWidgetItem(name);
         item->setData(Qt::UserRole, mimetype.name());
