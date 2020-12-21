@@ -228,9 +228,8 @@ void Widget::loadDesktopFile(const QFileInfo &fileInfo)
         }
     }
 
-
-    if (mimetypes.isEmpty()) {
-        return;
+    if (!iconName.isEmpty() && m_applicationIcons[appId].isEmpty()) {
+        m_applicationIcons[appId] = iconName;
     }
 
     // If an application has a .desktop file without NoDisplay use that, otherwise use one of the ones with NoDisplay anyways
@@ -238,10 +237,12 @@ void Widget::loadDesktopFile(const QFileInfo &fileInfo)
         m_desktopFileNames[appId] = fileInfo.fileName();
     }
 
-    // Dumb assumption; if it has an icon it probably has the proper name
-    if ((!noDisplay || !m_applicationIcons.contains(appId)) && !iconName.isEmpty()) {
-        m_applicationIcons[appId] = iconName;
+    if (!appName.isEmpty() && m_applicationNames[appId].isEmpty()) {
         m_applicationNames[appId] = appName;
+    }
+
+    if (mimetypes.isEmpty()) {
+        return;
     }
 
     for (const QString &readMimeName : mimetypes) {
