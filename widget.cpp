@@ -35,12 +35,18 @@ Widget::Widget(QWidget *parent)
     }
 
     // Preload up front, so it doesn't get sluggish when selecting applications supporting a lot
+    const QIcon unknownIcon = QIcon::fromTheme("unknown");
     for (const QString &mimetypeName : m_supportedMimetypes.values()) {
         if (m_mimeTypeIcons.contains(mimetypeName)) {
             continue;
         }
         const QMimeType mimetype = m_mimeDb.mimeTypeForName(mimetypeName);
-        m_mimeTypeIcons[mimetypeName] =  QIcon::fromTheme(mimetype.iconName());
+        QIcon icon = QIcon::fromTheme(mimetype.iconName());
+        if (!icon.isNull()) {
+            m_mimeTypeIcons[mimetypeName] = icon;
+        } else {
+            m_mimeTypeIcons[mimetypeName] = unknownIcon;
+        }
     }
 
     QHBoxLayout *mainLayout = new QHBoxLayout;
