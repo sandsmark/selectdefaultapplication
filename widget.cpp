@@ -27,6 +27,11 @@ Widget::Widget(QWidget *parent)
             qWarning() << appId << "does not have an associated desktop file!";
             continue;
         }
+
+        if (m_applicationNames[appId].isEmpty()) {
+            qWarning() << "Missing name" << appId;
+            m_applicationNames[appId] = appId;
+        }
     }
 
     // Preload up front, so it doesn't get sluggish when selecting applications supporting a lot
@@ -227,12 +232,6 @@ void Widget::loadDesktopFile(const QFileInfo &fileInfo)
     if (mimetypes.isEmpty()) {
         return;
     }
-
-    if (appName.isEmpty()) {
-        qWarning() << "Missing name" << fileInfo.fileName() << appId << mimetypes;
-        appName = appId;
-    }
-
 
     // If an application has a .desktop file without NoDisplay use that, otherwise use one of the ones with NoDisplay anyways
     if (!noDisplay || !m_desktopFileNames.contains(appId)) {
