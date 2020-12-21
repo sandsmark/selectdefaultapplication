@@ -215,8 +215,6 @@ void Widget::loadDesktopFile(const QFileInfo &fileInfo)
             QStringList parts = line.split(' ');
             if (parts.first() == "env" && parts.count() > 2) {
                 line = parts[2];
-            } else {
-                line = parts.first();
             }
 
             appId = line;
