@@ -25,6 +25,7 @@ private slots:
 private:
     void loadDesktopFile(const QFileInfo &fileInfo);
     void setDefault(const QString &appName, const QSet<QString> &mimetypes, const QSet<QString> &unselectedMimetypes);
+    void loadIcons(const QString &path);
 
     QMultiHash<QString, QString> m_supportedMimetypes;
     QHash<QString, QSet<QString>> m_applications;
@@ -35,6 +36,7 @@ private:
     QHash<QString, QString> m_appIdToDesktopFile;
 
     QHash<QString, QIcon> m_mimeTypeIcons; // for preloading icons, because that's (a bit) slooow
+    QHash<QString, QString> m_iconPaths;
 
     QTreeWidget *m_applicationList;
     QMimeDatabase m_mimeDb;

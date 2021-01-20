@@ -9,6 +9,8 @@
 #include <QStandardPaths>
 #include <QPushButton>
 #include <QMessageBox>
+#include <QDirIterator>
+#include <QGuiApplication>
 
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
@@ -21,6 +23,7 @@ Widget::Widget(QWidget *parent)
             loadDesktopFile(file);
         }
     }
+
     // Check that we shit with multiple .desktop files, but some nodisplay files
     for (const QString &appId : m_supportedMimetypes.uniqueKeys()) {
         if (!m_desktopFileNames.contains(appId)) {
@@ -36,17 +39,57 @@ Widget::Widget(QWidget *parent)
 
     // Preload up front, so it doesn't get sluggish when selecting applications supporting a lot
     const QIcon unknownIcon = QIcon::fromTheme("unknown");
+
+    // TODO: check if QT_QPA_PLATFORMTHEME is set to plasma or sandsmark,
+    // if so just use the functioning QIcon::fromTheme()
+    // We do this manually because non-Plasma-platforms icon loading is extremely slow (I blame GTK and its crappy icon cache)
+    for (const QString &searchPath : (QIcon::themeSearchPaths() + QIcon::fallbackSearchPaths())) {
+        loadIcons(searchPath + QIcon::themeName());
+        loadIcons(searchPath);
+    }
+
     for (const QString &mimetypeName : m_supportedMimetypes.values()) {
         if (m_mimeTypeIcons.contains(mimetypeName)) {
             continue;
         }
         const QMimeType mimetype = m_mimeDb.mimeTypeForName(mimetypeName);
-        QIcon icon = QIcon::fromTheme(mimetype.iconName());
+
+        QString iconName = mimetype.iconName();
+        QIcon icon(m_iconPaths.value(iconName));
         if (!icon.isNull()) {
             m_mimeTypeIcons[mimetypeName] = icon;
-        } else {
-            m_mimeTypeIcons[mimetypeName] = unknownIcon;
+            continue;
         }
+        icon = QIcon(m_iconPaths.value(mimetype.genericIconName()));
+        if (!icon.isNull()) {
+            m_mimeTypeIcons[mimetypeName] = icon;
+            continue;
+        }
+        int split = iconName.lastIndexOf('+');
+        if (split != -1) {
+            iconName.truncate(split);
+            icon = QIcon(m_iconPaths.value(iconName));
+            if (!icon.isNull()) {
+                m_mimeTypeIcons[mimetypeName] = icon;
+                continue;
+            }
+        }
+        split = iconName.lastIndexOf('-');
+        if (split != -1) {
+            iconName.truncate(split);
+            icon = QIcon(m_iconPaths.value(iconName));
+            if (!icon.isNull()) {
+                m_mimeTypeIcons[mimetypeName] = icon;
+                continue;
+            }
+        }
+        icon = QIcon(m_iconPaths.value(mimetype.genericIconName()));
+        if (!icon.isNull()) {
+            m_mimeTypeIcons[mimetypeName] = icon;
+            continue;
+        }
+
+        m_mimeTypeIcons[mimetypeName] = unknownIcon;
     }
 
     QHBoxLayout *mainLayout = new QHBoxLayout;
@@ -345,4 +388,26 @@ void Widget::setDefault(const QString &appName, const QSet<QString> &mimetypes, 
     }
 
     return;
+}
+
+void Widget::loadIcons(const QString &path)
+{
+    QFileInfo fi(path);
+    if (!fi.exists() || !fi.isDir()) {
+        return;
+    }
+    // TODO: avoid hardcoding
+    QStringList imageTypes({"*.svg", "*.svgz", "*.png", "*.xpm"});
+    QDirIterator it(path, imageTypes, QDir::Files, QDirIterator::Subdirectories);
+
+    while (it.hasNext()) {
+        it.next();
+        fi = it.fileInfo();
+
+        const QString name = fi.completeBaseName();
+        if (m_iconPaths.contains(name)) {
+            continue;
+        }
+        m_iconPaths[name] = fi.filePath();
+    }
 }
