@@ -154,25 +154,40 @@ void Widget::onMimetypeSelected()
     const QString mimetypeGroup = item->parent()->text(0);
     const QString application = item->data(0, Qt::UserRole).toString();
 
-    for (const QString &supportedMime : m_supportedMimetypes.values(application)) {
+    QStringList supported = m_supportedMimetypes.values(application);
+
+    // E. g. kwrite and kate only indicate support for "text/plain", but
+    // they're nice for things like c source files.
+    QSet<QString> secondary;
+    const QStringList currentSupported = m_supportedMimetypes.values(application);
+    for (const QString &mimetype : currentSupported) {
+        for (const QString &child :  m_childMimeTypes.values(mimetype)) {
+            supported.append(child);
+            secondary.insert(child);
+        }
+    }
+    supported.removeDuplicates();
+
+    for (const QString &supportedMime : supported) {
         if (!supportedMime.startsWith(mimetypeGroup)) {
             continue;
         }
         const QMimeType mimetype = m_mimeDb.mimeTypeForName(supportedMime);
+        const QString mimeName = mimetype.name();
         QString name = mimetype.filterString().trimmed();
         if (name.isEmpty()) {
             name = mimetype.comment().trimmed();
         }
         if (name.isEmpty()) {
-            name = mimetype.name().trimmed();
+            name = mimeName;
         } else {
-            name += '\n' + mimetype.name();
+            name += '\n' + mimeName;
         }
         QListWidgetItem *item = new QListWidgetItem(name);
-        item->setData(Qt::UserRole, mimetype.name());
+        item->setData(Qt::UserRole, mimeName);
         item->setIcon(m_mimeTypeIcons[supportedMime]);
         m_mimetypeList->addItem(item);
-        item->setSelected(true);
+        item->setSelected(!secondary.contains(mimeName));
     }
 
     m_setDefaultButton->setEnabled(m_mimetypeList->count() > 0);
@@ -294,6 +309,7 @@ void Widget::loadDesktopFile(const QFileInfo &fileInfo)
         return;
     }
 
+    const QMimeType octetStream = m_mimeDb.mimeTypeForName("application/octet-stream");
     for (const QString &readMimeName : mimetypes) {
         // Resolve aliases etc
         const QMimeType mimetype = m_mimeDb.mimeTypeForName(readMimeName.trimmed());
@@ -301,12 +317,18 @@ void Widget::loadDesktopFile(const QFileInfo &fileInfo)
             continue;
         }
 
-        const QString name = mimetype.name();
-        if (m_supportedMimetypes.contains(appId, name)) {
+        const QString mimetypeName = mimetype.name();
+        for (const QString &parent : mimetype.parentMimeTypes()) {
+            if (parent == "application/octet-stream") {
+                break;
+            }
+            m_childMimeTypes.insert(parent, mimetypeName);
+        }
+        if (m_supportedMimetypes.contains(appId, mimetypeName)) {
             continue;
         }
 
-        const QStringList parts = name.split('/');
+        const QStringList parts = mimetypeName.split('/');
         if (parts.count() != 2) {
             continue;
         }
@@ -314,7 +336,7 @@ void Widget::loadDesktopFile(const QFileInfo &fileInfo)
         const QString type = parts[0].trimmed();
 
         m_applications[type].insert(appId);
-        m_supportedMimetypes.insert(appId, name);
+        m_supportedMimetypes.insert(appId, mimetypeName);
     }
 }
 

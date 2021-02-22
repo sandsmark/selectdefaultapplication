@@ -29,6 +29,7 @@ private:
     void loadIcons(const QString &path);
 
     QMultiHash<QString, QString> m_supportedMimetypes;
+    QMultiHash<QString, QString> m_childMimeTypes;
     QHash<QString, QSet<QString>> m_applications;
     QHash<QString, QString> m_applicationIcons;
     QHash<QString, QString> m_applicationNames;
