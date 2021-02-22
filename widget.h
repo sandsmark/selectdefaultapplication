@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QMimeDatabase>
+#include <QMultiHash>
 
 class QFileInfo;
 class QTreeWidget;

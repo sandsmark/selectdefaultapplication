@@ -25,7 +25,7 @@ Widget::Widget(QWidget *parent)
     }
 
     // Check that we shit with multiple .desktop files, but some nodisplay files
-    for (const QString &appId : m_supportedMimetypes.uniqueKeys()) {
+    for (const QString &appId : m_supportedMimetypes.keys()) {
         if (!m_desktopFileNames.contains(appId)) {
             qWarning() << appId << "does not have an associated desktop file!";
             continue;
@@ -109,11 +109,11 @@ Widget::Widget(QWidget *parent)
     rightLayout->addWidget(m_mimetypeList);
     rightLayout->addWidget(m_setDefaultButton);
 
-    QStringList types = m_applications.uniqueKeys();
+    QStringList types = m_applications.keys();
     std::sort(types.begin(), types.end());
     for (const QString &type : types)  {
         QTreeWidgetItem *typeItem = new QTreeWidgetItem(QStringList(type));
-        QStringList applications = m_applications[type].toList();
+        QStringList applications = m_applications[type].values();
         std::sort(applications.begin(), applications.end(), [=](const QString &a, const QString &b) {
             return m_applicationNames[a] < m_applicationNames[b];
         });
@@ -242,7 +242,7 @@ void Widget::loadDesktopFile(const QFileInfo &fileInfo)
 
         if (line.startsWith("MimeType")) {
             line.remove(0, line.indexOf('=') + 1);
-            mimetypes = line.split(';', QString::SkipEmptyParts);
+            mimetypes = line.split(';', Qt::SkipEmptyParts);
             continue;
         }
 
