@@ -259,19 +259,17 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 	QString appId = fileInfo.fileName();
 	QString iconName;
 
-	bool inCorrectGroup = false;
 	bool noDisplay = false;
 
 	while (!file.atEnd()) {
 		QString line = file.readLine().simplified();
 
 		if (line.startsWith('[')) {
-			inCorrectGroup = (line == "[Desktop Entry]");
-			continue;
-		}
-
-		if (!inCorrectGroup) {
-			continue;
+			if (line == "[Desktop Entry]") {
+				continue;
+			}
+			// Multiple groups may not have the same name, and [Desktop Entry] must be the first group. So we are done otherwise
+			break;
 		}
 
 		if (line.startsWith("MimeType")) {
