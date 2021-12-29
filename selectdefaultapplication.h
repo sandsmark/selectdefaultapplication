@@ -10,12 +10,12 @@ class QTreeWidget;
 class QListWidget;
 class QPushButton;
 
-class Widget : public QWidget {
+class SelectDefaultApplication : public QWidget {
 	Q_OBJECT
 
 public:
-	Widget(QWidget *parent = nullptr);
-	~Widget();
+	SelectDefaultApplication(QWidget *parent = nullptr);
+	~SelectDefaultApplication();
 
 private slots:
 	void onMimetypeSelected();

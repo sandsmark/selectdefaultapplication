@@ -1,4 +1,4 @@
-#include "widget.h"
+#include "selectdefaultapplication.h"
 #include <QDebug>
 #include <QDir>
 #include <QDirIterator>
@@ -12,7 +12,7 @@
 #include <QStandardPaths>
 #include <QTreeWidget>
 
-Widget::Widget(QWidget *parent) : QWidget(parent)
+SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(parent)
 {
 	for (const QString &dirPath : QStandardPaths::standardLocations(
 		     QStandardPaths::ApplicationsLocation)) {
@@ -142,16 +142,16 @@ Widget::Widget(QWidget *parent) : QWidget(parent)
 	m_applicationList->setHeaderHidden(true);
 
 	connect(m_applicationList, &QTreeWidget::itemSelectionChanged, this,
-		&Widget::onMimetypeSelected);
+		&SelectDefaultApplication::onMimetypeSelected);
 	connect(m_setDefaultButton, &QPushButton::clicked, this,
-		&Widget::onSetDefaultClicked);
+		&SelectDefaultApplication::onSetDefaultClicked);
 }
 
-Widget::~Widget()
+SelectDefaultApplication::~SelectDefaultApplication()
 {
 }
 
-void Widget::onMimetypeSelected()
+void SelectDefaultApplication::onMimetypeSelected()
 {
 	m_setDefaultButton->setEnabled(false);
 	m_mimetypeList->clear();
@@ -211,7 +211,7 @@ void Widget::onMimetypeSelected()
 	m_setDefaultButton->setEnabled(m_mimetypeList->count() > 0);
 }
 
-void Widget::onSetDefaultClicked()
+void SelectDefaultApplication::onSetDefaultClicked()
 {
 	QList<QTreeWidgetItem *> selectedItems =
 		m_applicationList->selectedItems();
@@ -244,7 +244,7 @@ void Widget::onSetDefaultClicked()
 	setDefault(application, selected, unselected);
 }
 
-void Widget::loadDesktopFile(const QFileInfo &fileInfo)
+void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 {
 	// Ugliest implementation of .desktop file reading ever
 
@@ -363,7 +363,7 @@ void Widget::loadDesktopFile(const QFileInfo &fileInfo)
 	}
 }
 
-void Widget::setDefault(const QString &appName, const QSet<QString> &mimetypes,
+void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QString> &mimetypes,
 			const QSet<QString> &unselectedMimetypes)
 {
 	QString desktopFile = m_desktopFileNames.value(appName);
@@ -448,7 +448,7 @@ void Widget::setDefault(const QString &appName, const QSet<QString> &mimetypes,
 	return;
 }
 
-void Widget::loadIcons(const QString &path)
+void SelectDefaultApplication::loadIcons(const QString &path)
 {
 	QFileInfo fi(path);
 	if (!fi.exists() || !fi.isDir()) {
