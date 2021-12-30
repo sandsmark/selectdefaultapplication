@@ -5,7 +5,7 @@
 #include <QMimeDatabase>
 #include <QMultiHash>
 #include <QLabel>
-#include <QToolButton>
+#include <QPushButton>
 #include <QLineEdit>
 #include <QSet>
 
@@ -24,13 +24,13 @@ public:
 private slots:
 	void onApplicationSelected();
 	void onSetDefaultClicked();
+	void populateApplicationList(const QString &filter);
 
 private:
 	void loadDesktopFile(const QFileInfo &fileInfo);
 	void setDefault(const QString &appName, const QSet<QString> &mimetypes,
 			const QSet<QString> &unselectedMimetypes);
 	void loadIcons(const QString &path);
-	void populateApplicationList(const QString &filter);
 	void addToMimetypeList(QListWidget *list, const QString &mimetypeName, const bool selected);
 	void readCurrentDefaultMimetypes();
 
@@ -65,7 +65,7 @@ private:
 	QListWidget *m_currentDefaultApps;
 	QPushButton *m_setDefaultButton;
 	QLineEdit *m_searchBox;
-	QToolButton *m_groupChooser;
+	QPushButton *m_groupChooser;
 	QLabel *m_middleBanner;
 	QLabel *m_rightBanner;
 };

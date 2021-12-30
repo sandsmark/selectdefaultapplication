@@ -86,7 +86,6 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 
 	m_applicationList = new QListWidget;
 	m_applicationList->setSelectionMode(QAbstractItemView::SingleSelection);
-	// TODO allow user to search for applications
 	populateApplicationList("");
 
 	m_setDefaultButton = new QPushButton(tr("Set as default application for these file types"));
@@ -96,20 +95,23 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 	m_mimetypeList->setSelectionMode(QAbstractItemView::MultiSelection);
 
 	m_rightBanner = new QLabel("");
-	m_middleBanner = new QLabel("Select an application to see its defaults.");
+	m_middleBanner = new QLabel(tr("Select an application to see its defaults."));
 
 	m_currentDefaultApps = new QListWidget;
 	m_currentDefaultApps->setSelectionMode(QAbstractItemView::NoSelection);
 
 	m_searchBox = new QLineEdit;
-	m_searchBox->setPlaceholderText("Search for Application");
+	m_searchBox->setPlaceholderText(tr("Search for Application"));
 
-	m_groupChooser = new QToolButton;
-	m_groupChooser->setPopupMode(QToolButton::ToolButtonPopupMode::InstantPopup);
+	m_groupChooser = new QPushButton;
+	m_groupChooser->setText(tr("Choose Group"));
 
 	QHBoxLayout *filterHolder = new QHBoxLayout;
+	filterHolder->addWidget(m_searchBox);
+	filterHolder->addWidget(m_groupChooser);
 
 	QVBoxLayout *leftLayout = new QVBoxLayout;
+	leftLayout->addLayout(filterHolder);
 	leftLayout->addWidget(m_applicationList);
 
 	QVBoxLayout *middleLayout = new QVBoxLayout;
@@ -130,6 +132,7 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 	connect(m_applicationList, &QListWidget::itemSelectionChanged, this,
 		&SelectDefaultApplication::onApplicationSelected);
 	connect(m_setDefaultButton, &QPushButton::clicked, this, &SelectDefaultApplication::onSetDefaultClicked);
+	connect(m_searchBox, &QLineEdit::textEdited, this, &SelectDefaultApplication::populateApplicationList);
 }
 
 SelectDefaultApplication::~SelectDefaultApplication()
@@ -155,8 +158,8 @@ void SelectDefaultApplication::onApplicationSelected()
 	const QString appName = item->data(0).toString();
 
 	// Set banners and right widget
-	m_middleBanner->setText(appName + " can open these filetypes:");
-	m_rightBanner->setText("Default mimetypes " + appName + " will open:");
+	m_middleBanner->setText(appName + tr(" can open these filetypes:"));
+	m_rightBanner->setText(tr("Configured mimetypes ") + appName + tr(" will open:"));
 	m_currentDefaultApps->clear();
 	for (QString &mimetype : m_defaultApps.values(appName)) {
 		addToMimetypeList(m_currentDefaultApps, mimetype, false);
@@ -184,7 +187,8 @@ void SelectDefaultApplication::onApplicationSelected()
 
 	m_setDefaultButton->setEnabled(m_mimetypeList->count() > 0);
 }
-void SelectDefaultApplication::addToMimetypeList(QListWidget *list, const QString &mimetypeDirtyName, const bool selected)
+void SelectDefaultApplication::addToMimetypeList(QListWidget *list, const QString &mimetypeDirtyName,
+						 const bool selected)
 {
 	// I didn't believe this was necessary, I tested, it is necessary. application/x-pkcs12 showed up here but is converted to application/pkcs12
 	const QMimeType mimetype = m_mimeDb.mimeTypeForName(mimetypeDirtyName);
@@ -462,7 +466,7 @@ void SelectDefaultApplication::populateApplicationList(const QString &filter)
 	m_applicationList->clear();
 
 	// Filter entries based on the filter string
-	QStringList applications = m_apps.keys().filter(filter);
+	QStringList applications = m_apps.keys().filter(filter, Qt::CaseInsensitive);
 
 	// Sort the remaining applications
 	// TODO If this is a performance issue, we can keep a seperate array pre-sorted
