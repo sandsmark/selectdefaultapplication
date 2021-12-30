@@ -410,7 +410,8 @@ What the fuck
 		const QMimeType mimetype =
 			m_mimeDb.mimeTypeForName(readMimeName.trimmed());
 		if (!mimetype.isValid()) {
-			qDebug() << "In file " << appName << " mimetype " << readMimeName << " is invalid. Ignoring...";
+			// TODO This happens a TON. Why?
+			//qDebug() << "In file " << appName << " mimetype " << readMimeName << " is invalid. Ignoring...";
 			continue;
 		}
 		const QString mimetypeName = mimetype.name();
@@ -434,23 +435,20 @@ use m_apps instead
 		}
 */
 
-/*
-TODO use type, I think this can still be deleted though. It needs to go elsewhere
-
-		const QStringList parts = mimetypeName.split('/');
-		if (parts.count() != 2) {
-			qDebug() << "Warning: encountered mimetype " << mimetypeName << " with more than 1 '/' character in " << appFile << " Unsure what to do, skipping...";
+		if (mimetypeName.count('/') != 1) {
+			qDebug() << "Warning: encountered mimetype " << mimetypeName << " without exactly 1 '/' character in " << appFile << " Unsure what to do, skipping...";
 			continue;
 		}
 
+/*
+TODO use type, I think this can still be deleted though. It needs to go elsewhere
 		const QString type = parts[0].trimmed();
 */
-		/* Indexing here creates an empty hashmap if one doesn't exist, so take advantage of that
-		if (!m_apps.contains(appName)) { m_apps[appName] = QHash<QMimeType,QString>(); }
-		*/
+		// Indexing in Qt creates a default element if one doesn't exist, so we don't need to explicitely check if m_apps[appName] exists
 		// If we've already got an association for this app from a different desktop file, don't overwrite it because we read highest-priority .desktops first
 		if (m_apps[appName].contains(mimetypeName)) {
-			qDebug() << "Info: " << appName << " already handles " << mimetypeName;
+			// Annoyingly, some apps like KDE mobile apps add associations for *the same exact file type* through two different aliases, so this gets spammed a lot.
+			qDebug() << "Info: " << appName << " already handles " << mimetypeName << " with " << m_apps[appName][mimetypeName] << " so " << appFile << "will be ignored";
 			continue;
 		}
 		m_apps[appName][mimetypeName] = appFile;
