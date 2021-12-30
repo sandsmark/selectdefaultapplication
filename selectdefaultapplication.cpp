@@ -245,21 +245,15 @@ TODO allow the user to check different mimetype groups to see only applications 
 
 void SelectDefaultApplication::onSetDefaultClicked()
 {
-	QList<QTreeWidgetItem *> selectedItems =
+	QList<QListWidgetItem *> selectedItems =
 		m_applicationList->selectedItems();
 	if (selectedItems.count() != 1) {
 		return;
 	}
 
-	const QTreeWidgetItem *item = selectedItems.first();
-/*
-How could this possibly happen?
-*/
-	if (!item->parent()) {
-		return;
-	}
+	const QListWidgetItem *item = selectedItems.first();
 
-	const QString application = item->data(0, Qt::UserRole).toString();
+	const QString application = item->data(0).toString();
 	if (application.isEmpty()) {
 		return;
 	}
@@ -290,13 +284,14 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 	}
 
 	// The filename of the desktop file
-	QString appId = fileInfo.fileName();
+	const QString &appFile = fileInfo.fileName();
 	// The mimetypes the application can support
 	QStringList mimetypes;
 	// The name of the application in its desktop entry
 	// Used as the primary key with which associations are made
 	QString appName;
-	QString iconName;
+	// The name of the icon as given in the desktop entry
+	QString appIcon;
 
 /*
 Not used anymore
@@ -304,6 +299,7 @@ Not used anymore
 */
 
 	while (!file.atEnd()) {
+		// Removes all runs of whitespace, but won't make `Name=` and `Name =` the same
 		QString line = file.readLine().simplified();
 
 		if (line.startsWith('[')) {
@@ -312,28 +308,21 @@ Not used anymore
 			}
 			// Multiple groups may not have the same name, and [Desktop Entry] must be the first group. So we are done otherwise
 			break;
-		}
+		} else {
+			// Trim the strings because the '=' can be padded with spaces because FreeDesktop is stupid, even though not a single desktop file on my computer uses that
+			const QString key = line.section('=', 0, 0).trimmed();
+			const QString value = line.section('=', 1).trimmed();
 
-		if (line.startsWith("MimeType")) {
-			line.remove(0, line.indexOf('=') + 1);
-			mimetypes = line.split(';', Qt::SkipEmptyParts);
-			continue;
+			if (key == "Name") {
+				appName = value;
+			} else if (key == "MimeType") {
+				mimetypes = value.split(';', Qt::SkipEmptyParts);
+			} else if (key == "Icon") {
+				appIcon = value;
+			}
+			// Else ignore the key
 		}
-
-		// LocaleStrings and IconStrings may have localized values. We don't want to display those
-		// TODO technically '[' can appear in the value of a Key. Extract this logic into a helper function
-		// Additionally Values can start with spaces which should be ignored because FreeDesktop people are dumb
-		if (line.startsWith("Name") && !line.contains('[')) {
-			line.remove(0, line.indexOf('=') + 1);
-			appName = line;
-			continue;
-		}
-
-		if (line.startsWith("Icon") && !line.contains('[')) {
-			line.remove(0, line.indexOf('=') + 1);
-			iconName = line;
-			continue;
-		}
+	}
 
 /*
 This has lots of problems, starting with the fact that `Exec` may not be the name of the program and not getting better from there
@@ -367,11 +356,15 @@ If a different desktop file has the same id somehow? then intended behavior shou
 			noDisplay = true;
 		}
 */
+
+	if (!appIcon.isEmpty() && m_applicationIcons[appFile].isEmpty()) {
+		m_applicationIcons[appName] = appIcon;
+	}
+	// Even if mimetypes is empty, set the icon in case a different one isn't
+	if (mimetypes.isEmpty()) {
+		return;
 	}
 
-	if (!iconName.isEmpty() && m_applicationIcons[appId].isEmpty()) {
-		m_applicationIcons[appId] = iconName;
-	}
 
 /*
 See previous comment
@@ -400,10 +393,6 @@ A refactor is required
 //		m_applicationNames[appId] = appName;
 //	}
 
-	if (mimetypes.isEmpty()) {
-		return;
-	}
-
 /*
 Apparently compilers these days literally cannot tell when a variable is not used or something, when compiling with -Wall -Werror on
 What the fuck
@@ -416,29 +405,54 @@ What the fuck
 		const QMimeType mimetype =
 			m_mimeDb.mimeTypeForName(readMimeName.trimmed());
 		if (!mimetype.isValid()) {
+			qDebug() << "In file " << appName << " mimetype " << readMimeName << " is invalid. Ignoring...";
 			continue;
 		}
-
 		const QString mimetypeName = mimetype.name();
+
+		// Create a database of mimetypes this application is a child of
+		// So applications that can edit parent mimetypes can also have associations formed to their child mimetypes
+		// Unless the parent is 'application/octet-stream' because I guess a lot of stuff has that as its parent
+		// Example: Kate editing text/plain can edit C source code
 		for (const QString &parent : mimetype.parentMimeTypes()) {
 			if (parent == "application/octet-stream") {
 				break;
 			}
 			m_childMimeTypes.insert(parent, mimetypeName);
 		}
-		if (m_supportedMimetypes.contains(appId, mimetypeName)) {
+
+/*
+use m_apps instead
+		if (m_supportedMimetypes.contains(appName, mimetypeName)) {
+			// TODO check to make sure the appFile's are distinct (in case the user copied to .local/share/applications to override it for example) and print the appFiles of both conflicting definitions
 			continue;
 		}
+*/
+
+/*
+TODO use type, I think this can still be deleted though. It needs to go elsewhere
 
 		const QStringList parts = mimetypeName.split('/');
 		if (parts.count() != 2) {
+			qDebug() << "Warning: encountered mimetype " << mimetypeName << " with more than 1 '/' character in " << appFile << " Unsure what to do, skipping...";
 			continue;
 		}
 
 		const QString type = parts[0].trimmed();
-
-		m_applications[type].insert(appId);
-		m_supportedMimetypes.insert(appId, mimetypeName);
+*/
+		/* Indexing here creates an empty hashmap if one doesn't exist, so take advantage of that
+		if (!m_apps.contains(appName)) { m_apps[appName] = QHash<QMimeType,QString>(); }
+		*/
+		// If we've already got an association for this app from a different desktop file, don't overwrite it because we read highest-priority .desktops first
+		if (m_apps[appName].contains(mimetypeName)) {
+			qDebug() << "Info: " << appName << " already handles " << mimetypeName;
+			continue;
+		}
+		m_apps[appName][mimetypeName] = appFile;
+/*
+Info is contained in m_apps, so use it elsewhere instead of this and remove this
+*/
+		m_supportedMimetypes.insert(appName, mimetypeName);
 	}
 }
 
@@ -450,12 +464,6 @@ TODO we will need to associate both a mimetype and an appName (which will really
 
 	QString desktopFile = m_desktopFileNames.value(appName);
 */
-	const QString &desktopFile = appName;
-	if (desktopFile.isEmpty()) {
-		qWarning() << "invalid" << appName;
-		return;
-	}
-
 	const QString filePath = QDir(QStandardPaths::writableLocation(
 					      QStandardPaths::ConfigLocation))
 					 .absoluteFilePath("mimeapps.list");
@@ -538,8 +546,22 @@ Unless we check explicitely and the file isn't there at all
 
 	for (const QString &mimetype : mimetypes) {
 		file.write(QString(mimetype + '=' +
-				   desktopFile + '\n')
+				   m_apps[appName][mimetype] + '\n')
 				   .toUtf8());
+	}
+}
+
+void SelectDefaultApplication::populateApplicationList(const QString &filter) {
+	m_applicationList->clear();
+
+	QStringList applications = m_apps.keys().filter(filter);
+	std::sort(applications.begin(), applications.end());
+	for (const QString &appName : applications) {
+		QListWidgetItem *app = new QListWidgetItem(appName);
+		app->setData(Qt::UserRole, "Some data");
+		app->setIcon(QIcon::fromTheme(m_applicationIcons[appName]));
+		m_applicationList->addItem(app);
+		app->setSelected(false);
 	}
 }
 

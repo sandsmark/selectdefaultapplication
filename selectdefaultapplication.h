@@ -29,12 +29,13 @@ private:
 	void populateApplicationList(const QString &filter);
 
 	// Should be refactored to only use m_apps()
+	// Hashtable of application names to mimetypes
 	QMultiHash<QString, QString> m_supportedMimetypes;
-	// Don't think this can do the same
+	// Hashtable with keys as parent mime types and values as all children of that mimetype which are encountered
 	QMultiHash<QString, QString> m_childMimeTypes;
 
 	// Hashtable of application names to hashtables of mimetypes to .desktop file entries
-	QHash<QString, QSet<QString> > m_apps;
+	QHash<QString, QHash<QString, QString> > m_apps;
 	// Hashtable of application names to icons
 	QHash<QString, QString> m_applicationIcons;
 	//QHash<QString, QString> m_applicationNames;
