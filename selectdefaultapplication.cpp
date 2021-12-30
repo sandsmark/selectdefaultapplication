@@ -25,6 +25,9 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 		}
 	}
 
+/*
+What?
+*/
 	// Check that we shit with multiple .desktop files, but some nodisplay files
 	for (const QString &appId : m_supportedMimetypes.keys()) {
 		if (!m_desktopFileNames.contains(appId)) {
@@ -254,9 +257,11 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 		return;
 	}
 
+	// The filename of the desktop file as a relative path from the ApplicationLocation directory it is in.
+	QString appId = fileInfo.fileName();
+	// The mimetypes the application can support
 	QStringList mimetypes;
 	QString appName;
-	QString appId = fileInfo.fileName();
 	QString iconName;
 
 	bool noDisplay = false;
@@ -278,17 +283,26 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 			continue;
 		}
 
+		// LocaleStrings and IconStrings may have localized values. We don't want to display those
+		// TODO technically '[' can appear in the value of a Key. Extract this logic into a helper function
+		// Additionally Values can start with spaces which should be ignored because FreeDesktop people are dumb
 		if (line.startsWith("Name") && !line.contains('[')) {
 			line.remove(0, line.indexOf('=') + 1);
 			appName = line;
 			continue;
 		}
 
-		if (line.startsWith("Icon")) {
+		if (line.startsWith("Icon") && !line.contains('[')) {
 			line.remove(0, line.indexOf('=') + 1);
 			iconName = line;
 			continue;
 		}
+
+/*
+This has lots of problems, starting with the fact that `Exec` may not be the name of the program and not getting better from there
+I assume it is done for a reason, probably Okular having 10_000_000_000 desktop files for itself.
+Though the original values actually don't seem like any would cause problems based on the inserted debug print below.
+Even if this can't be completely removed, it is much better to use the Name key for this or something
 
 		if (line.startsWith("Exec")) {
 			line.remove(0, line.indexOf('=') + 1);
@@ -299,26 +313,37 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 			if (parts.first() == "env" && parts.count() > 2) {
 				line = parts[2];
 			}
+qDebug() << "Updating appId for " << appId << " to " << line;
 
 			appId = line;
 			continue;
 		}
+*/
+
+/*
+I don't think we should ignore entries that have NoDisplay at all. The specification says regarding NoDisplay entries:
+NoDisplay ... can be useful to e.g. associate this application with MIME types ... without having a menu entry for it
+If a different desktop file has the same id somehow? then intended behavior should be to add the NoDisplay one's mimetypes to the Display one's, not ignore the NoDisplay one
 
 		if (line.startsWith("NoDisplay=") &&
 		    line.contains("true", Qt::CaseInsensitive)) {
 			noDisplay = true;
 		}
+*/
 	}
 
 	if (!iconName.isEmpty() && m_applicationIcons[appId].isEmpty()) {
 		m_applicationIcons[appId] = iconName;
 	}
 
+/*
+See previous comment
 	// If an application has a .desktop file without NoDisplay use that, otherwise
 	// use one of the ones with NoDisplay anyways
 	if (!noDisplay || !m_desktopFileNames.contains(appId)) {
 		m_desktopFileNames[appId] = fileInfo.fileName();
 	}
+*/
 
 	if (!appName.isEmpty() && m_applicationNames[appId].isEmpty()) {
 		m_applicationNames[appId] = appName;
