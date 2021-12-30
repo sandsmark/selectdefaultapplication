@@ -27,10 +27,12 @@ private:
 			const QSet<QString> &unselectedMimetypes);
 	void loadIcons(const QString &path);
 	void populateApplicationList(const QString &filter);
+	void addToMimetypeList(const QString &mimetypeName, const bool selected);
 
-	// Should be refactored to only use m_apps()
 	// Hashtable of application names to mimetypes
-	QMultiHash<QString, QString> m_supportedMimetypes;
+	// Used because it is difficult to extract the information from m_apps' multiple different hashtables
+	// JK its not used
+	//QMultiHash<QString,QString> m_supportedMimetypes;
 	// Hashtable with keys as parent mime types and values as all children of that mimetype which are encountered
 	QMultiHash<QString, QString> m_childMimeTypes;
 

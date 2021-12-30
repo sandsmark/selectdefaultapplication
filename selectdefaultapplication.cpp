@@ -67,7 +67,8 @@ This should be impossible, but do more thinking
 	}
 
 	// Set m_mimeTypeIcons[mimetypeName] to an appropriate icon
-	for (const QString &mimetypeName : m_supportedMimetypes.values()) {
+	for (const QHash<QString,QString> &application_associations : m_apps.values()) {
+	for (const QString &mimetypeName : application_associations.keys()) {
 		if (m_mimeTypeIcons.contains(mimetypeName)) {
 			continue;
 		}
@@ -110,6 +111,7 @@ This should be impossible, but do more thinking
 		}
 
 		m_mimeTypeIcons[mimetypeName] = unknownIcon;
+	}
 	}
 
 	m_applicationList = new QListWidget;
@@ -198,22 +200,17 @@ void SelectDefaultApplication::onApplicationSelected()
 	//const QString application = item->data(0, Qt::UserRole).toString();
 	const QString application = item->data(0).toString();
 
-	QStringList supported = m_supportedMimetypes.values(application);
-
+	const QStringList officiallySupported =
+		m_apps.value(application).keys();
 	// E. g. kwrite and kate only indicate support for "text/plain", but
 	// they're nice for things like c source files.
-	QSet<QString> secondary;
-	const QStringList currentSupported =
-		m_supportedMimetypes.values(application);
-	for (const QString &mimetype : currentSupported) {
+	QSet<QString> impliedSupported;
+	for (const QString &mimetype : officiallySupported) {
 		for (const QString &child : m_childMimeTypes.values(mimetype)) {
-			supported.append(child);
-			secondary.insert(child);
+			impliedSupported.insert(child);
 		}
 	}
-	supported.removeDuplicates();
 
-	for (const QString &supportedMime : supported) {
 /*
 TODO allow the user to check different mimetype groups to see only applications that affect those groups, and only associations in those groups
 
@@ -221,8 +218,18 @@ TODO allow the user to check different mimetype groups to see only applications 
 			continue;
 		}
 */
+	for (const QString &mimetype : officiallySupported) {
+		addToMimetypeList(mimetype, true);
+	}
+	for (const QString &mimetype : impliedSupported) {
+		addToMimetypeList(mimetype, false);
+	}
+
+	m_setDefaultButton->setEnabled(m_mimetypeList->count() > 0);
+}
+void SelectDefaultApplication::addToMimetypeList(const QString &mimetypeDirtyName, const bool selected) {
 		const QMimeType mimetype =
-			m_mimeDb.mimeTypeForName(supportedMime);
+			m_mimeDb.mimeTypeForName(mimetypeDirtyName);
 		const QString mimeName = mimetype.name();
 		QString name = mimetype.filterString().trimmed();
 		if (name.isEmpty()) {
@@ -235,12 +242,10 @@ TODO allow the user to check different mimetype groups to see only applications 
 		}
 		QListWidgetItem *item = new QListWidgetItem(name);
 		item->setData(Qt::UserRole, mimeName);
-		item->setIcon(m_mimeTypeIcons[supportedMime]);
+		item->setIcon(m_mimeTypeIcons[mimetypeDirtyName]);
 		m_mimetypeList->addItem(item);
-		item->setSelected(!secondary.contains(mimeName));
-	}
+		item->setSelected(selected);
 
-	m_setDefaultButton->setEnabled(m_mimetypeList->count() > 0);
 }
 
 void SelectDefaultApplication::onSetDefaultClicked()
@@ -452,7 +457,7 @@ TODO use type, I think this can still be deleted though. It needs to go elsewher
 /*
 Info is contained in m_apps, so use it elsewhere instead of this and remove this
 */
-		m_supportedMimetypes.insert(appName, mimetypeName);
+		//m_supportedMimetypes.insert(appName, mimetypeName);
 	}
 }
 
@@ -558,7 +563,6 @@ void SelectDefaultApplication::populateApplicationList(const QString &filter) {
 	std::sort(applications.begin(), applications.end());
 	for (const QString &appName : applications) {
 		QListWidgetItem *app = new QListWidgetItem(appName);
-		app->setData(Qt::UserRole, "Some data");
 		app->setIcon(QIcon::fromTheme(m_applicationIcons[appName]));
 		m_applicationList->addItem(app);
 		app->setSelected(false);
