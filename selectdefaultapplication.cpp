@@ -156,16 +156,12 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 		&SelectDefaultApplication::onApplicationSelected);
 	connect(m_setDefaultButton, &QPushButton::clicked, this, &SelectDefaultApplication::onSetDefaultClicked);
 	connect(m_infoButton, &QToolButton::clicked, this, &SelectDefaultApplication::showHelp);
-	connect(m_searchBox, &QLineEdit::textChanged, this, &SelectDefaultApplication::populateApplicationList);
+	connect(m_searchBox, &QLineEdit::textEdited, this, &SelectDefaultApplication::populateApplicationList);
 	connect(m_mimegroupMenu, &QMenu::triggered, this, &SelectDefaultApplication::constrictGroup);
 }
 
 SelectDefaultApplication::~SelectDefaultApplication()
 {
-}
-
-bool SelectDefaultApplication::stringMeetsMimegroupFilter(const QString &s) {
-	return s.startsWith(m_filterMimegroup);
 }
 
 /**
@@ -194,8 +190,7 @@ void SelectDefaultApplication::onApplicationSelected()
 		addToMimetypeList(m_currentDefaultApps, mimetype, false);
 	}
 
-	QStringList officiallySupported = m_apps.value(appName).keys();
-	officiallySupported.removeIf(stringMeetsMimegroupFilter);
+	const QStringList officiallySupported = m_apps.value(appName).keys();
 
 	// TODO allow the user to check different mimetype groups to see only applications that affect those groups, and here remove mimetypes not in that group
 	//if (!supportedMime.startsWith(mimetypeGroup)) { continue; }
@@ -207,13 +202,16 @@ void SelectDefaultApplication::onApplicationSelected()
 			impliedSupported.insert(child);
 		}
 	}
-	impliedSupported.removeIf(stringMeetsMimegroupFilter);
 
 	for (const QString &mimetype : officiallySupported) {
-		addToMimetypeList(m_mimetypeList, mimetype, true);
+		if (mimetype.startsWith(m_filterMimegroup)) {
+			addToMimetypeList(m_mimetypeList, mimetype, true);
+		}
 	}
 	for (const QString &mimetype : impliedSupported) {
-		addToMimetypeList(m_mimetypeList, mimetype, false);
+		if (mimetype.startsWith(m_filterMimegroup)) {
+			addToMimetypeList(m_mimetypeList, mimetype, false);
+		}
 	}
 
 	m_setDefaultButton->setEnabled(m_mimetypeList->count() > 0);
@@ -490,7 +488,6 @@ void SelectDefaultApplication::readCurrentDefaultMimetypes()
 	}
 }
 
-// Adds applications to the leftmost tab if they match the filter and the mimegroup restrictions
 void SelectDefaultApplication::populateApplicationList(const QString &filter)
 {
 	// Clear the list in case we are updating it (i.e. performing a search)
@@ -498,7 +495,12 @@ void SelectDefaultApplication::populateApplicationList(const QString &filter)
 
 	// Filter entries based on the filter string
 	QStringList applications = m_apps.keys().filter(filter, Qt::CaseInsensitive);
-	applications.removeIf(stringMeetsMimegroupFilter);
+	// Iterate over the array, removing elements who have no desktop entries which can handle the correct mimetype
+	for (QStringList::size_type i = applications.size(); i--;) {
+		if (!applicationHasAnyCorrectMimetype(applications[i])) {
+			applications.removeAt(i);
+		}
+	}
 
 	// Sort the remaining applications
 	applications.sort();
@@ -536,9 +538,11 @@ void SelectDefaultApplication::loadIcons(const QString &path)
 
 void SelectDefaultApplication::constrictGroup(QAction *action)
 {
+	m_groupChooser->setText(action->text());
 	m_filterMimegroup = (action->text() == tr("All")) ? "" : action->text();
-	qDebug() << action->text() << "Compared with" << m_filterMimegroup;
 	m_searchBox->clear();
+	populateApplicationList("");
+	onApplicationSelected();
 }
 
 void SelectDefaultApplication::showHelp()
@@ -557,4 +561,13 @@ void SelectDefaultApplication::showHelp()
 		"This program parses all the application files located on the system, as well as the `mimeapps.list`, to determine what programs exist and which are set as defaults.\n"
 		"Then, when you click to 'set as default for these filetypes', it reads `mimeapps.list`, and sets the keys you have highlighted to the new values.\n"));
 	dialog->exec();
+}
+
+bool SelectDefaultApplication::applicationHasAnyCorrectMimetype(const QString &appName) {
+	for (QString appFile : m_apps[appName].keys()) {
+		if (appFile.startsWith(m_filterMimegroup)) {
+			return true;
+		}
+	}
+	return false;
 }

@@ -37,6 +37,7 @@ private:
 	void loadIcons(const QString &path);
 	void addToMimetypeList(QListWidget *list, const QString &mimetypeName, const bool selected);
 	void readCurrentDefaultMimetypes();
+	bool applicationHasAnyCorrectMimetype(const QString &appName);
 
 	// Hashtable of application names to hashtables of mimetypes to .desktop file entries
 	QHash<QString, QHash<QString, QString> > m_apps;
