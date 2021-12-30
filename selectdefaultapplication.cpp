@@ -197,17 +197,20 @@ void SelectDefaultApplication::onApplicationSelectedLogic(bool allowEnabled)
 		addToMimetypeList(m_currentDefaultApps, mimetype, false);
 	}
 
-	const QStringList officiallySupported = m_apps.value(appName).keys();
+	const QHash<QString, QString> &officiallySupported = m_apps.value(appName);
 
 	// E. g. kwrite and kate only indicate support for "text/plain", but they're nice for things like C source files.
 	QSet<QString> impliedSupported;
 	for (const QString &mimetype : officiallySupported) {
 		for (const QString &child : m_childMimeTypes.values(mimetype)) {
-			impliedSupported.insert(child);
+			// Ensure that the officially supported keys don't contain this value
+			if (!officiallySupported.contains(child)) {
+				impliedSupported.insert(child);
+			}
 		}
 	}
 
-	for (const QString &mimetype : officiallySupported) {
+	for (const QString &mimetype : officiallySupported.keys()) {
 		if (mimetype.startsWith(m_filterMimegroup)) {
 			addToMimetypeList(m_mimetypeList, mimetype, true);
 		}
@@ -417,8 +420,7 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 				existingAssociations.append(line);
 				continue;
 			}
-qDebug() << "Selected: " << mimetypes;
-qDebug() << "Unselected: " << unselectedMimetypes;
+
 			// Ensure that if a mimetype is unselected but set as default for a different application, we don't remove its entry from configuration
 			if (unselectedMimetypes.contains(mimetype)) {
 				const QString handlingAppFile = line.split('=')[1];
