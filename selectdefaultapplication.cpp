@@ -14,6 +14,7 @@
 
 SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(parent)
 {
+	readCurrentDefaultMimetypes();
 	for (const QString &dirPath : QStandardPaths::standardLocations(QStandardPaths::ApplicationsLocation)) {
 		qDebug() << "Loading applications from" << dirPath;
 		QDir applicationsDir(dirPath);
@@ -94,13 +95,36 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 	m_mimetypeList = new QListWidget;
 	m_mimetypeList->setSelectionMode(QAbstractItemView::MultiSelection);
 
-	QGridLayout *rightLayout = new QGridLayout;
-	rightLayout->addWidget(m_mimetypeList);
-	rightLayout->addWidget(m_setDefaultButton);
+	m_rightBanner = new QLabel("");
+	m_middleBanner = new QLabel("Select an application to see its defaults.");
+
+	m_currentDefaultApps = new QListWidget;
+	m_currentDefaultApps->setSelectionMode(QAbstractItemView::NoSelection);
+
+	m_searchBox = new QLineEdit;
+	m_searchBox->setPlaceholderText("Search for Application");
+
+	m_groupChooser = new QToolButton;
+	m_groupChooser->setPopupMode(QToolButton::ToolButtonPopupMode::InstantPopup);
+
+	QHBoxLayout *filterHolder = new QHBoxLayout;
+
+	QVBoxLayout *leftLayout = new QVBoxLayout;
+	leftLayout->addWidget(m_applicationList);
+
+	QVBoxLayout *middleLayout = new QVBoxLayout;
+	middleLayout->addWidget(m_middleBanner);
+	middleLayout->addWidget(m_mimetypeList);
+	middleLayout->addWidget(m_setDefaultButton);
+
+	QVBoxLayout *rightLayout = new QVBoxLayout;
+	rightLayout->addWidget(m_rightBanner);
+	rightLayout->addWidget(m_currentDefaultApps);
 
 	QHBoxLayout *mainLayout = new QHBoxLayout;
 	setLayout(mainLayout);
-	mainLayout->addWidget(m_applicationList);
+	mainLayout->addLayout(leftLayout);
+	mainLayout->addLayout(middleLayout);
 	mainLayout->addLayout(rightLayout);
 
 	connect(m_applicationList, &QListWidget::itemSelectionChanged, this,
@@ -128,16 +152,22 @@ void SelectDefaultApplication::onApplicationSelected()
 	}
 
 	const QListWidgetItem *item = selectedItems.first();
+	const QString appName = item->data(0).toString();
 
-	const QString application = item->data(0).toString();
+	// Set banners and right widget
+	m_middleBanner->setText(appName + " can open these filetypes:");
+	m_rightBanner->setText("Default mimetypes " + appName + " will open:");
+	m_currentDefaultApps->clear();
+	for (QString &mimetype : m_defaultApps.values(appName)) {
+		addToMimetypeList(m_currentDefaultApps, mimetype, false);
+	}
 
-	const QStringList officiallySupported = m_apps.value(application).keys();
+	const QStringList officiallySupported = m_apps.value(appName).keys();
 
 	// TODO allow the user to check different mimetype groups to see only applications that affect those groups, and here remove mimetypes not in that group
 	//if (!supportedMime.startsWith(mimetypeGroup)) { continue; }
 
-	// E. g. kwrite and kate only indicate support for "text/plain", but
-	// they're nice for things like c source files.
+	// E. g. kwrite and kate only indicate support for "text/plain", but they're nice for things like C source files.
 	QSet<QString> impliedSupported;
 	for (const QString &mimetype : officiallySupported) {
 		for (const QString &child : m_childMimeTypes.values(mimetype)) {
@@ -146,18 +176,20 @@ void SelectDefaultApplication::onApplicationSelected()
 	}
 
 	for (const QString &mimetype : officiallySupported) {
-		addToMimetypeList(mimetype, true);
+		addToMimetypeList(m_mimetypeList, mimetype, true);
 	}
 	for (const QString &mimetype : impliedSupported) {
-		addToMimetypeList(mimetype, false);
+		addToMimetypeList(m_mimetypeList, mimetype, false);
 	}
 
 	m_setDefaultButton->setEnabled(m_mimetypeList->count() > 0);
 }
-void SelectDefaultApplication::addToMimetypeList(const QString &mimetypeDirtyName, const bool selected)
+void SelectDefaultApplication::addToMimetypeList(QListWidget *list, const QString &mimetypeDirtyName, const bool selected)
 {
+	// I didn't believe this was necessary, I tested, it is necessary. application/x-pkcs12 showed up here but is converted to application/pkcs12
 	const QMimeType mimetype = m_mimeDb.mimeTypeForName(mimetypeDirtyName);
 	const QString mimeName = mimetype.name();
+
 	QString name = mimetype.filterString().trimmed();
 	if (name.isEmpty()) {
 		name = mimetype.comment().trimmed();
@@ -170,7 +202,7 @@ void SelectDefaultApplication::addToMimetypeList(const QString &mimetypeDirtyNam
 	QListWidgetItem *item = new QListWidgetItem(name);
 	item->setData(Qt::UserRole, mimeName);
 	item->setIcon(m_mimeTypeIcons[mimetypeDirtyName]);
-	m_mimetypeList->addItem(item);
+	list->addItem(item);
 	item->setSelected(selected);
 }
 
@@ -257,6 +289,13 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 		return;
 	}
 
+	// Note that this program is the one that can edit some files from the defaults, if it is
+	if (m_defaultDesktopEntries.contains(appFile)) {
+		for (QString &mimetype : m_defaultDesktopEntries.values(appFile)) {
+			m_defaultApps.insert(appName, mimetype);
+		}
+	}
+
 	for (const QString &readMimeName : mimetypes) {
 		// Resolve aliases etc
 		const QMimeType mimetype = m_mimeDb.mimeTypeForName(readMimeName.trimmed());
@@ -307,8 +346,7 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 		QDir(QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)).absoluteFilePath("mimeapps.list");
 	QFile file(filePath);
 
-	// Read in existing mimeapps.list, skipping the lines for the mimetypes we're
-	// updating
+	// Read in existing mimeapps.list, skipping the lines for the mimetypes we're updating
 	QList<QByteArray> existingContent;
 	QList<QByteArray> existingAssociations;
 	if (file.open(QIODevice::ReadOnly)) {
@@ -374,6 +412,47 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 
 	for (const QString &mimetype : mimetypes) {
 		file.write(QString(mimetype + '=' + m_apps[appName][mimetype] + '\n').toUtf8());
+	}
+}
+
+void SelectDefaultApplication::readCurrentDefaultMimetypes()
+{
+	const QString filePath =
+		QDir(QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)).absoluteFilePath("mimeapps.list");
+	QFile file(filePath);
+
+	// Read in existing mimeapps.list, skipping the lines for the mimetypes we're updating
+	if (file.open(QIODevice::ReadOnly)) {
+		bool inCorrectGroup = false;
+		while (!file.atEnd()) {
+			const QByteArray line = file.readLine().trimmed();
+
+			if (line.isEmpty()) {
+				continue;
+			}
+
+			if (line.startsWith('[')) {
+				inCorrectGroup = (line == "[Default Applications]");
+				continue;
+			}
+
+			if (!inCorrectGroup) {
+				continue;
+			}
+
+			if (!line.contains('=')) {
+				continue;
+			}
+
+			const QString mimetype = m_mimeDb.mimeTypeForName(line.split('=').first().trimmed()).name();
+			const QString appFile = line.split('=')[1];
+			m_defaultDesktopEntries.insert(appFile, mimetype);
+		}
+
+		file.close();
+	} else {
+		qWarning() << "Unable to open file for reading" << file.errorString();
+		// TODO If we can't open the file for reading, we better stop before opening for writing and deleting it
 	}
 }
 

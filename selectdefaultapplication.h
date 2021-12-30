@@ -4,6 +4,9 @@
 #include <QWidget>
 #include <QMimeDatabase>
 #include <QMultiHash>
+#include <QLabel>
+#include <QToolButton>
+#include <QLineEdit>
 #include <QSet>
 
 class QFileInfo;
@@ -28,8 +31,8 @@ private:
 			const QSet<QString> &unselectedMimetypes);
 	void loadIcons(const QString &path);
 	void populateApplicationList(const QString &filter);
-	void addToMimetypeList(const QString &mimetypeName, const bool selected);
-	QMultiHash<QString, QString> getDefaultDesktopEntries();
+	void addToMimetypeList(QListWidget *list, const QString &mimetypeName, const bool selected);
+	void readCurrentDefaultMimetypes();
 
 	// Hashtable of application names to hashtables of mimetypes to .desktop file entries
 	QHash<QString, QHash<QString, QString> > m_apps;
@@ -54,10 +57,17 @@ private:
 	QHash<QString, QIcon> m_mimeTypeIcons;
 	QHash<QString, QString> m_iconPaths;
 
-	QListWidget *m_applicationList;
 	QMimeDatabase m_mimeDb;
+
+	// UI elements
+	QListWidget *m_applicationList;
 	QListWidget *m_mimetypeList;
+	QListWidget *m_currentDefaultApps;
 	QPushButton *m_setDefaultButton;
+	QLineEdit *m_searchBox;
+	QToolButton *m_groupChooser;
+	QLabel *m_middleBanner;
+	QLabel *m_rightBanner;
 };
 
 #endif // WIDGET_H
