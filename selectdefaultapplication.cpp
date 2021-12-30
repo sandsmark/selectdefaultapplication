@@ -147,7 +147,7 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 		&SelectDefaultApplication::onApplicationSelected);
 	connect(m_setDefaultButton, &QPushButton::clicked, this, &SelectDefaultApplication::onSetDefaultClicked);
 	connect(m_infoButton, &QToolButton::clicked, this, &SelectDefaultApplication::showHelp);
-	connect(m_searchBox, &QLineEdit::textEdited, this, &SelectDefaultApplication::populateApplicationList);
+	connect(m_searchBox, &QLineEdit::textChanged, this, &SelectDefaultApplication::populateApplicationList);
 }
 
 SelectDefaultApplication::~SelectDefaultApplication()
@@ -518,6 +518,20 @@ void SelectDefaultApplication::loadIcons(const QString &path)
 	}
 }
 
-void SelectDefaultApplication::showHelp() {
-	qDebug() << "HELP";
+void SelectDefaultApplication::showHelp()
+{
+	QMessageBox *dialog = new QMessageBox(this);
+	dialog->setText(tr(
+		"To use this program, select any applications on the left panel.\n"
+		"Then select or deselect any mimetypes in the center that you want this application to open. Most of the time, you can leave this at the defaults; it will choose all the mimetypes the application has explicit support for.\n"
+		"Finally, press at the bottom of the screen to make the highlighted mimetypes open with the selected application by default.\n"
+		"You can see your changes on the right. Any application that you have configured will report it there.\n"
+		"---------------------------------------------------------------------------------------\n"
+		"Explanation of how this works: A FreeDesktop has Desktop Entries (.desktop files) in several locations; /usr/share/applications/, /usr/local/share/applications/, and ~/.local/share/applications/ by default.\n"
+		"These desktop entries tell application launchers how to run programs, including the tool 'xdg-open' which is the standard tool to open files and URLs.\n"
+		"xdg-open reads Desktop Entries in an unpredictable order in order to determine what application to handle that file; it uses the `MimeTypes` key present in a Desktop Entry to determine this.\n"
+		"There is also a user configuration file, `~/.config/mimeapps.list`, which it reads first and gives higher precedence.\n"
+		"This program parses all the application files located on the system, as well as the `mimeapps.list`, to determine what programs exist and which are set as defaults.\n"
+		"Then, when you click to 'set as default for these filetypes', it reads `mimeapps.list`, and sets the keys you have highlighted to the new values.\n"));
+	dialog->exec();
 }
