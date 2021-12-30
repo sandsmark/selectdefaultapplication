@@ -84,21 +84,11 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 		}
 	}
 
+	// The rest of this constructor sets up the GUI
+	// Left section
 	m_applicationList = new QListWidget;
 	m_applicationList->setSelectionMode(QAbstractItemView::SingleSelection);
 	populateApplicationList("");
-
-	m_setDefaultButton = new QPushButton(tr("Set as default application for these file types"));
-	m_setDefaultButton->setEnabled(false);
-
-	m_mimetypeList = new QListWidget;
-	m_mimetypeList->setSelectionMode(QAbstractItemView::MultiSelection);
-
-	m_rightBanner = new QLabel("");
-	m_middleBanner = new QLabel(tr("Select an application to see its defaults."));
-
-	m_currentDefaultApps = new QListWidget;
-	m_currentDefaultApps->setSelectionMode(QAbstractItemView::NoSelection);
 
 	m_searchBox = new QLineEdit;
 	m_searchBox->setPlaceholderText(tr("Search for Application"));
@@ -114,15 +104,39 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 	leftLayout->addLayout(filterHolder);
 	leftLayout->addWidget(m_applicationList);
 
+	// Middle section
+	m_middleBanner = new QLabel(tr("Select an application to see its defaults."));
+
+	m_mimetypeList = new QListWidget;
+	m_mimetypeList->setSelectionMode(QAbstractItemView::MultiSelection);
+
+	m_setDefaultButton = new QPushButton();
+	m_setDefaultButton->setText(tr("Set as default application for these file types"));
+	m_setDefaultButton->setEnabled(false);
+
 	QVBoxLayout *middleLayout = new QVBoxLayout;
 	middleLayout->addWidget(m_middleBanner);
 	middleLayout->addWidget(m_mimetypeList);
 	middleLayout->addWidget(m_setDefaultButton);
 
+	// Right section
+	m_rightBanner = new QLabel("");
+
+	m_infoButton = new QToolButton();
+	m_infoButton->setText("?");
+
+	QHBoxLayout *infoHolder = new QHBoxLayout;
+	infoHolder->addWidget(m_rightBanner);
+	infoHolder->addWidget(m_infoButton);
+
+	m_currentDefaultApps = new QListWidget;
+	m_currentDefaultApps->setSelectionMode(QAbstractItemView::NoSelection);
+
 	QVBoxLayout *rightLayout = new QVBoxLayout;
-	rightLayout->addWidget(m_rightBanner);
+	rightLayout->addLayout(infoHolder);
 	rightLayout->addWidget(m_currentDefaultApps);
 
+	// Main layout and connections
 	QHBoxLayout *mainLayout = new QHBoxLayout;
 	setLayout(mainLayout);
 	mainLayout->addLayout(leftLayout);
@@ -132,6 +146,7 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 	connect(m_applicationList, &QListWidget::itemSelectionChanged, this,
 		&SelectDefaultApplication::onApplicationSelected);
 	connect(m_setDefaultButton, &QPushButton::clicked, this, &SelectDefaultApplication::onSetDefaultClicked);
+	connect(m_infoButton, &QToolButton::clicked, this, &SelectDefaultApplication::showHelp);
 	connect(m_searchBox, &QLineEdit::textEdited, this, &SelectDefaultApplication::populateApplicationList);
 }
 
@@ -501,4 +516,8 @@ void SelectDefaultApplication::loadIcons(const QString &path)
 		}
 		m_iconPaths[name] = icon_file.filePath();
 	}
+}
+
+void SelectDefaultApplication::showHelp() {
+	qDebug() << "HELP";
 }

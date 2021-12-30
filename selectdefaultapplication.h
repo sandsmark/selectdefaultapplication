@@ -6,6 +6,7 @@
 #include <QMultiHash>
 #include <QLabel>
 #include <QPushButton>
+#include <QToolButton>
 #include <QLineEdit>
 #include <QSet>
 
@@ -25,6 +26,7 @@ private slots:
 	void onApplicationSelected();
 	void onSetDefaultClicked();
 	void populateApplicationList(const QString &filter);
+	void showHelp();
 
 private:
 	void loadDesktopFile(const QFileInfo &fileInfo);
@@ -63,9 +65,10 @@ private:
 	QListWidget *m_applicationList;
 	QListWidget *m_mimetypeList;
 	QListWidget *m_currentDefaultApps;
-	QPushButton *m_setDefaultButton;
 	QLineEdit *m_searchBox;
 	QPushButton *m_groupChooser;
+	QPushButton *m_setDefaultButton;
+	QToolButton *m_infoButton;
 	QLabel *m_middleBanner;
 	QLabel *m_rightBanner;
 };
