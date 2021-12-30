@@ -20,7 +20,7 @@ class SelectDefaultApplication : public QWidget {
 	Q_OBJECT
 
 public:
-	SelectDefaultApplication(QWidget *parent = nullptr);
+	SelectDefaultApplication(QWidget *parent, bool isVerbose);
 	~SelectDefaultApplication();
 
 private slots:
@@ -60,7 +60,7 @@ private:
 	// mimetypes. Remains constant after startup
 	QMultiHash<QString, QString> m_defaultDesktopEntries;
 
-	QHash<QString, QString> m_appIdToDesktopFile;
+	bool isVerbose;
 
 	// for preloading icons, because that's (a bit) slooow
 	QHash<QString, QIcon> m_mimeTypeIcons;

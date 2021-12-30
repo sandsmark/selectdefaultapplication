@@ -12,7 +12,8 @@
 #include <QStandardPaths>
 #include <QTreeWidget>
 
-SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(parent)
+SelectDefaultApplication::SelectDefaultApplication(QWidget *parent, bool isVerbose)
+	: QWidget(parent), isVerbose(isVerbose)
 {
 	readCurrentDefaultMimetypes();
 	for (const QString &dirPath : QStandardPaths::standardLocations(QStandardPaths::ApplicationsLocation)) {
@@ -154,8 +155,7 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 
 	connect(m_applicationList, &QListWidget::itemSelectionChanged, this,
 		&SelectDefaultApplication::onApplicationSelected);
-	connect(m_mimetypeList, &QListWidget::itemActivated, this,
-		&SelectDefaultApplication::enableSetDefaultButton);
+	connect(m_mimetypeList, &QListWidget::itemActivated, this, &SelectDefaultApplication::enableSetDefaultButton);
 	connect(m_setDefaultButton, &QPushButton::clicked, this, &SelectDefaultApplication::onSetDefaultClicked);
 	connect(m_infoButton, &QToolButton::clicked, this, &SelectDefaultApplication::showHelp);
 	connect(m_searchBox, &QLineEdit::textEdited, this, &SelectDefaultApplication::populateApplicationList);
@@ -339,8 +339,11 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 		// Resolve aliases etc
 		const QMimeType mimetype = m_mimeDb.mimeTypeForName(readMimeName.trimmed());
 		if (!mimetype.isValid()) {
-			// TODO This happens a TON. Why?
-			//qDebug() << "In file " << appName << " mimetype " << readMimeName << " is invalid. Ignoring...";
+			if (isVerbose) {
+				// TODO This happens a TON. Why?
+				qDebug() << "In file " << appName << " mimetype " << readMimeName
+					 << " is invalid. Ignoring...";
+			}
 			continue;
 		}
 		const QString mimetypeName = mimetype.name();
@@ -357,9 +360,9 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 		}
 
 		if (mimetypeName.count('/') != 1) {
-			qDebug() << "Warning: encountered mimetype " << mimetypeName
-				 << " without exactly 1 '/' character in " << appFile
-				 << " Unsure what to do, skipping...";
+			qWarning() << "Warning: encountered mimetype " << mimetypeName
+				   << " without exactly 1 '/' character in " << appFile
+				   << " Unsure what to do, skipping...";
 			continue;
 		}
 		// Now that we've checked this, we can get the mimegroup and add it to the global list
@@ -370,8 +373,10 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 		// If we've already got an association for this app from a different desktop file, don't overwrite it because we read highest-priority .desktops first
 		if (m_apps[appName].contains(mimetypeName)) {
 			// Annoyingly, some apps like KDE mobile apps add associations for *the same exact file type* through two different aliases, so this gets spammed a lot.
-			qDebug() << "Debug: " << appName << " already handles " << mimetypeName << " with "
-				 << m_apps[appName][mimetypeName] << " so " << appFile << "will be ignored";
+			if (isVerbose) {
+				qDebug() << "Debug: " << appName << " already handles " << mimetypeName << " with "
+					 << m_apps[appName][mimetypeName] << " so " << appFile << "will be ignored";
+			}
 			continue;
 		}
 		m_apps[appName][mimetypeName] = appFile;
@@ -454,6 +459,9 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 	for (const QString &mimetype : mimetypes) {
 		const QString &appFile = m_apps[appName][mimetype];
 		file.write(QString(mimetype + '=' + appFile + '\n').toUtf8());
+		if (isVerbose) {
+			qDebug() << "Writing setting: " << mimetype << "=" << "appFile";
+		}
 		// Update UI also
 		m_defaultApps[mimetype] = appName;
 	}
@@ -499,7 +507,6 @@ void SelectDefaultApplication::readCurrentDefaultMimetypes()
 		file.close();
 	} else {
 		qWarning() << "Unable to open file for reading" << file.errorString();
-		// TODO If we can't open the file for reading, we better stop before opening for writing and deleting it
 	}
 }
 
@@ -560,7 +567,8 @@ void SelectDefaultApplication::constrictGroup(QAction *action)
 	onApplicationSelected();
 }
 
-void SelectDefaultApplication::enableSetDefaultButton() {
+void SelectDefaultApplication::enableSetDefaultButton()
+{
 	m_setDefaultButton->setEnabled(true);
 }
 
