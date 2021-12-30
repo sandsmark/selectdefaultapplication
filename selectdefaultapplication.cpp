@@ -32,6 +32,7 @@ What?
 	for (const QString &appId : m_supportedMimetypes.keys()) {
 /*
 This is impossible now that app ids don't come from random shit in their Exec key
+
 		if (!m_desktopFileNames.contains(appId)) {
 			qWarning()
 				<< appId
@@ -40,6 +41,9 @@ This is impossible now that app ids don't come from random shit in their Exec ke
 		}
 */
 
+/*
+This should be impossible, but do more thinking
+*/
 		if (m_applicationNames[appId].isEmpty()) {
 			qWarning() << "Missing name" << appId;
 			m_applicationNames[appId] = appId;
