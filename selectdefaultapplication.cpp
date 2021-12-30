@@ -524,6 +524,13 @@ I'm pretty sure if unselectedMimetypes contains mimetype but .second().trimmed()
 
 Later...: Yeah I tested it and this is a bug
 */
+			if (unselectedMimetypes.contains(mimetype)) {
+				const QString handlingAppFile = line.split('=')[1];
+				const QString appFile = m_apps[appName][mimetype];
+				if (appFile != handlingAppFile) {
+					existingAssociations.append(line);
+				}
+			}
 		}
 
 		file.close();
