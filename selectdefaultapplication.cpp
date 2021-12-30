@@ -30,12 +30,15 @@ What?
 */
 	// Check that we shit with multiple .desktop files, but some nodisplay files
 	for (const QString &appId : m_supportedMimetypes.keys()) {
+/*
+This is impossible now that app ids don't come from random shit in their Exec key
 		if (!m_desktopFileNames.contains(appId)) {
 			qWarning()
 				<< appId
 				<< "does not have an associated desktop file!";
 			continue;
 		}
+*/
 
 		if (m_applicationNames[appId].isEmpty()) {
 			qWarning() << "Missing name" << appId;
@@ -264,7 +267,10 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 	QString appName;
 	QString iconName;
 
+/*
+Not used anymore
 	bool noDisplay = false;
+*/
 
 	while (!file.atEnd()) {
 		QString line = file.readLine().simplified();
