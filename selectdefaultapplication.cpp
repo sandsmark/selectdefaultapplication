@@ -284,6 +284,9 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 				 << " Unsure what to do, skipping...";
 			continue;
 		}
+		// Now that we've checked this, we can get the mimegroup and add it to the global list
+		const QString mimegroup = mimetypeName.section('/', 0, 0);
+		m_mimegroups.insert(mimegroup);
 
 		// Indexing in Qt creates a default element if one doesn't exist, so we don't need to explicitely check if m_apps[appName] exists
 		// If we've already got an association for this app from a different desktop file, don't overwrite it because we read highest-priority .desktops first
