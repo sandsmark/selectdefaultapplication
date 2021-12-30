@@ -584,9 +584,9 @@ void SelectDefaultApplication::showHelp()
 		"---------------------------------------------------------------------------------------\n"
 		"Explanation of how this works: A FreeDesktop has Desktop Entries (.desktop files) in several locations; /usr/share/applications/, /usr/local/share/applications/, and ~/.local/share/applications/ by default.\n"
 		"These desktop entries tell application launchers how to run programs, including the tool 'xdg-open' which is the standard tool to open files and URLs.\n"
-		"xdg-open reads Desktop Entries in an unpredictable order in order to determine what application to handle that file; it uses the `MimeTypes` key present in a Desktop Entry to determine this.\n"
+		"xdg-open reads Desktop Entries in an unpredictable order in order to determine what application to handle that file; it uses the `MimeType` key present in a Desktop Entry to determine this.\n"
 		"There is also a user configuration file, `~/.config/mimeapps.list`, which it reads first and gives higher precedence.\n"
-		"This program parses all the application files located on the system, as well as the `mimeapps.list`, to determine what programs exist and which are set as defaults.\n"
+		"This program parses all the Desktop Entries on the system, as well as the `mimeapps.list`, to determine what programs exist and which are set as defaults.\n"
 		"Then, when you click to 'set as default for these filetypes', it reads `mimeapps.list`, and sets the keys you have highlighted to the new values.\n"));
 	dialog->exec();
 }
