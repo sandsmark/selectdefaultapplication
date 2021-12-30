@@ -154,6 +154,8 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 
 	connect(m_applicationList, &QListWidget::itemSelectionChanged, this,
 		&SelectDefaultApplication::onApplicationSelected);
+	connect(m_mimetypeList, &QListWidget::itemActivated, this,
+		&SelectDefaultApplication::enableSetDefaultButton);
 	connect(m_setDefaultButton, &QPushButton::clicked, this, &SelectDefaultApplication::onSetDefaultClicked);
 	connect(m_infoButton, &QToolButton::clicked, this, &SelectDefaultApplication::showHelp);
 	connect(m_searchBox, &QLineEdit::textEdited, this, &SelectDefaultApplication::populateApplicationList);
@@ -165,11 +167,16 @@ SelectDefaultApplication::~SelectDefaultApplication()
 }
 
 /**
- *  Populates the middle and right side of the screen.
- *  Selects all the mimetypes that application can natively support for the middle, and all currently selected for right
- *  Filters mimetypes based on if they start with m_filterMimegroup
+ * Populates the middle and right side of the screen.
+ * Selects all the mimetypes that application can natively support for the middle, and all currently selected for right
+ * Filters mimetypes based on if they start with m_filterMimegroup
+ * Extra function is needed for Qt slots, which is in turn needed to stop the screen from flashing, which is unfortunate
  */
 void SelectDefaultApplication::onApplicationSelected()
+{
+	onApplicationSelectedLogic(true);
+}
+void SelectDefaultApplication::onApplicationSelectedLogic(bool allowEnabled)
 {
 	m_setDefaultButton->setEnabled(false);
 	m_mimetypeList->clear();
@@ -192,9 +199,6 @@ void SelectDefaultApplication::onApplicationSelected()
 
 	const QStringList officiallySupported = m_apps.value(appName).keys();
 
-	// TODO allow the user to check different mimetype groups to see only applications that affect those groups, and here remove mimetypes not in that group
-	//if (!supportedMime.startsWith(mimetypeGroup)) { continue; }
-
 	// E. g. kwrite and kate only indicate support for "text/plain", but they're nice for things like C source files.
 	QSet<QString> impliedSupported;
 	for (const QString &mimetype : officiallySupported) {
@@ -214,7 +218,7 @@ void SelectDefaultApplication::onApplicationSelected()
 		}
 	}
 
-	m_setDefaultButton->setEnabled(m_mimetypeList->count() > 0);
+	m_setDefaultButton->setEnabled(allowEnabled && m_mimetypeList->count() > 0);
 }
 void SelectDefaultApplication::addToMimetypeList(QListWidget *list, const QString &mimeDirtyName, const bool selected)
 {
@@ -411,13 +415,15 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 			const QString mimetype = m_mimeDb.mimeTypeForName(line.split('=').first().trimmed()).name();
 			if (!mimetypes.contains(mimetype) && !unselectedMimetypes.contains(mimetype)) {
 				existingAssociations.append(line);
+				continue;
 			}
-
+qDebug() << "Selected: " << mimetypes;
+qDebug() << "Unselected: " << unselectedMimetypes;
 			// Ensure that if a mimetype is unselected but set as default for a different application, we don't remove its entry from configuration
 			if (unselectedMimetypes.contains(mimetype)) {
 				const QString handlingAppFile = line.split('=')[1];
-				const QString appFile = m_apps[appName][mimetype];
-				if (appFile != handlingAppFile) {
+				const QString appFile = m_apps[appName].value(mimetype);
+				if (appFile != handlingAppFile && appFile != "") {
 					existingAssociations.append(line);
 				}
 			}
@@ -444,15 +450,14 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 	}
 
 	for (const QString &mimetype : mimetypes) {
-		const QString appFile = m_apps[appName][mimetype];
+		const QString &appFile = m_apps[appName][mimetype];
 		file.write(QString(mimetype + '=' + appFile + '\n').toUtf8());
 		// Update UI also
 		m_defaultApps[mimetype] = appName;
 	}
 
 	// Redraw and make the button unclickable so there is always user feedback
-	onApplicationSelected();
-	m_setDefaultButton->setEnabled(false);
+	onApplicationSelectedLogic(false);
 }
 
 void SelectDefaultApplication::readCurrentDefaultMimetypes()
@@ -551,6 +556,10 @@ void SelectDefaultApplication::constrictGroup(QAction *action)
 	m_searchBox->clear();
 	populateApplicationList("");
 	onApplicationSelected();
+}
+
+void SelectDefaultApplication::enableSetDefaultButton() {
+	m_setDefaultButton->setEnabled(true);
 }
 
 void SelectDefaultApplication::showHelp()

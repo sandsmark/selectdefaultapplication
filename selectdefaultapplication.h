@@ -29,6 +29,7 @@ private slots:
 	void populateApplicationList(const QString &filter);
 	void showHelp();
 	void constrictGroup(QAction *action);
+	void enableSetDefaultButton();
 
 private:
 	void loadDesktopFile(const QFileInfo &fileInfo);
@@ -38,6 +39,7 @@ private:
 	void addToMimetypeList(QListWidget *list, const QString &mimetypeName, const bool selected);
 	void readCurrentDefaultMimetypes();
 	bool applicationHasAnyCorrectMimetype(const QString &appName);
+	void onApplicationSelectedLogic(bool allowEnable);
 
 	// Hashtable of application names to hashtables of mimetypes to .desktop file entries
 	QHash<QString, QHash<QString, QString> > m_apps;
