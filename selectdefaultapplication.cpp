@@ -460,7 +460,8 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 		const QString &appFile = m_apps[appName][mimetype];
 		file.write(QString(mimetype + '=' + appFile + '\n').toUtf8());
 		if (isVerbose) {
-			qDebug() << "Writing setting: " << mimetype << "=" << "appFile";
+			qDebug() << "Writing setting: " << mimetype << "="
+				 << "appFile";
 		}
 		// Update UI also
 		m_defaultApps[mimetype] = appName;
