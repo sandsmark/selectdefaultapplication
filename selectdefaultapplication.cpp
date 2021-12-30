@@ -164,6 +164,10 @@ SelectDefaultApplication::~SelectDefaultApplication()
 {
 }
 
+bool SelectDefaultApplication::stringMeetsMimegroupFilter(const QString &s) {
+	return s.startsWith(m_filterMimegroup);
+}
+
 /**
  *  Populates the middle and right side of the screen.
  *  Selects all the mimetypes that application can natively support for the middle, and all currently selected for right
@@ -190,7 +194,8 @@ void SelectDefaultApplication::onApplicationSelected()
 		addToMimetypeList(m_currentDefaultApps, mimetype, false);
 	}
 
-	const QStringList officiallySupported = m_apps.value(appName).keys();
+	QStringList officiallySupported = m_apps.value(appName).keys();
+	officiallySupported.removeIf(stringMeetsMimegroupFilter);
 
 	// TODO allow the user to check different mimetype groups to see only applications that affect those groups, and here remove mimetypes not in that group
 	//if (!supportedMime.startsWith(mimetypeGroup)) { continue; }
@@ -202,16 +207,13 @@ void SelectDefaultApplication::onApplicationSelected()
 			impliedSupported.insert(child);
 		}
 	}
+	impliedSupported.removeIf(stringMeetsMimegroupFilter);
 
 	for (const QString &mimetype : officiallySupported) {
-		if (mimetype.startsWith(m_filterMimegroup)) {
-			addToMimetypeList(m_mimetypeList, mimetype, true);
-		}
+		addToMimetypeList(m_mimetypeList, mimetype, true);
 	}
 	for (const QString &mimetype : impliedSupported) {
-		if (mimetype.startsWith(m_filterMimegroup)) {
-			addToMimetypeList(m_mimetypeList, mimetype, false);
-		}
+		addToMimetypeList(m_mimetypeList, mimetype, false);
 	}
 
 	m_setDefaultButton->setEnabled(m_mimetypeList->count() > 0);
@@ -488,6 +490,7 @@ void SelectDefaultApplication::readCurrentDefaultMimetypes()
 	}
 }
 
+// Adds applications to the leftmost tab if they match the filter and the mimegroup restrictions
 void SelectDefaultApplication::populateApplicationList(const QString &filter)
 {
 	// Clear the list in case we are updating it (i.e. performing a search)
@@ -495,10 +498,10 @@ void SelectDefaultApplication::populateApplicationList(const QString &filter)
 
 	// Filter entries based on the filter string
 	QStringList applications = m_apps.keys().filter(filter, Qt::CaseInsensitive);
+	applications.removeIf(stringMeetsMimegroupFilter);
 
 	// Sort the remaining applications
-	// TODO If this is a performance issue, we can keep a seperate array pre-sorted
-	std::sort(applications.begin(), applications.end());
+	applications.sort();
 
 	// Add each application to the left panel
 	for (const QString &appName : applications) {
