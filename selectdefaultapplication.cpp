@@ -431,7 +431,7 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 			const QSet<QString> &unselectedMimetypes)
 {
 /*
-TODO we will need to associate both a mimetype and a filename to an appName (which will really be an appName then and not appId), but for now appName is the desktopFile
+TODO we will need to associate both a mimetype and an appName (which will really be an appName then and not appId) to index a desktopFile, but for now appName is just the desktopFile
 
 	QString desktopFile = m_desktopFileNames.value(appName);
 */
