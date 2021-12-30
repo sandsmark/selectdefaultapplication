@@ -9,6 +9,7 @@
 #include <QToolButton>
 #include <QLineEdit>
 #include <QSet>
+#include <QMenu>
 
 class QFileInfo;
 class QTreeWidget;
@@ -27,6 +28,7 @@ private slots:
 	void onSetDefaultClicked();
 	void populateApplicationList(const QString &filter);
 	void showHelp();
+	void constrictGroup(QAction *action);
 
 private:
 	void loadDesktopFile(const QFileInfo &fileInfo);
@@ -45,6 +47,8 @@ private:
 
 	// Set containing all the mimegroups we saw
 	QSet<QString> m_mimegroups;
+	// Global variable to match selected mimegroup on
+	QString m_filterMimegroup;
 	// Multi-hashtable with keys as application names and values as mimetypes
 	QMultiHash<QString, QString> m_defaultApps;
 	// Multi-hashtable with keys as .desktop files and values as mimetypes, read from mimeapps.list
@@ -67,6 +71,7 @@ private:
 	QListWidget *m_currentDefaultApps;
 	QLineEdit *m_searchBox;
 	QPushButton *m_groupChooser;
+	QMenu *m_mimegroupMenu;
 	QPushButton *m_setDefaultButton;
 	QToolButton *m_infoButton;
 	QLabel *m_middleBanner;

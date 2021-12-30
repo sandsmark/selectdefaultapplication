@@ -94,7 +94,16 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 	m_searchBox->setPlaceholderText(tr("Search for Application"));
 
 	m_groupChooser = new QPushButton;
-	m_groupChooser->setText(tr("Choose Group"));
+	m_groupChooser->setText(tr("All"));
+
+	m_mimegroupMenu = new QMenu(m_groupChooser);
+	m_mimegroupMenu->addAction(tr("All"));
+	QStringList sorted_mimegroups = m_mimegroups.values();
+	sorted_mimegroups.sort();
+	for (const QString &mimegroup : sorted_mimegroups) {
+		m_mimegroupMenu->addAction(mimegroup);
+	}
+	m_groupChooser->setMenu(m_mimegroupMenu);
 
 	QHBoxLayout *filterHolder = new QHBoxLayout;
 	filterHolder->addWidget(m_searchBox);
@@ -148,17 +157,18 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 	connect(m_setDefaultButton, &QPushButton::clicked, this, &SelectDefaultApplication::onSetDefaultClicked);
 	connect(m_infoButton, &QToolButton::clicked, this, &SelectDefaultApplication::showHelp);
 	connect(m_searchBox, &QLineEdit::textChanged, this, &SelectDefaultApplication::populateApplicationList);
+	connect(m_mimegroupMenu, &QMenu::triggered, this, &SelectDefaultApplication::constrictGroup);
 }
 
 SelectDefaultApplication::~SelectDefaultApplication()
 {
 }
 
-/*
-Populates the right side of the screen. Selects all the mimetypes that application can natively support
-TODO distinguish between mimetypes the application currently is the default of, mimetypes the application natively supports, children of the application's supported types
-Currently only distinguishes between the latter two
-*/
+/**
+ *  Populates the middle and right side of the screen.
+ *  Selects all the mimetypes that application can natively support for the middle, and all currently selected for right
+ *  Filters mimetypes based on if they start with m_filterMimegroup
+ */
 void SelectDefaultApplication::onApplicationSelected()
 {
 	m_setDefaultButton->setEnabled(false);
@@ -194,19 +204,22 @@ void SelectDefaultApplication::onApplicationSelected()
 	}
 
 	for (const QString &mimetype : officiallySupported) {
-		addToMimetypeList(m_mimetypeList, mimetype, true);
+		if (mimetype.startsWith(m_filterMimegroup)) {
+			addToMimetypeList(m_mimetypeList, mimetype, true);
+		}
 	}
 	for (const QString &mimetype : impliedSupported) {
-		addToMimetypeList(m_mimetypeList, mimetype, false);
+		if (mimetype.startsWith(m_filterMimegroup)) {
+			addToMimetypeList(m_mimetypeList, mimetype, false);
+		}
 	}
 
 	m_setDefaultButton->setEnabled(m_mimetypeList->count() > 0);
 }
-void SelectDefaultApplication::addToMimetypeList(QListWidget *list, const QString &mimetypeDirtyName,
-						 const bool selected)
+void SelectDefaultApplication::addToMimetypeList(QListWidget *list, const QString &mimeDirtyName, const bool selected)
 {
 	// I didn't believe this was necessary, I tested, it is necessary. application/x-pkcs12 showed up here but is converted to application/pkcs12
-	const QMimeType mimetype = m_mimeDb.mimeTypeForName(mimetypeDirtyName);
+	const QMimeType mimetype = m_mimeDb.mimeTypeForName(mimeDirtyName);
 	const QString mimeName = mimetype.name();
 
 	QString name = mimetype.filterString().trimmed();
@@ -220,7 +233,7 @@ void SelectDefaultApplication::addToMimetypeList(QListWidget *list, const QStrin
 	}
 	QListWidgetItem *item = new QListWidgetItem(name);
 	item->setData(Qt::UserRole, mimeName);
-	item->setIcon(m_mimeTypeIcons[mimetypeDirtyName]);
+	item->setIcon(m_mimeTypeIcons[mimeDirtyName]);
 	list->addItem(item);
 	item->setSelected(selected);
 }
@@ -516,6 +529,13 @@ void SelectDefaultApplication::loadIcons(const QString &path)
 		}
 		m_iconPaths[name] = icon_file.filePath();
 	}
+}
+
+void SelectDefaultApplication::constrictGroup(QAction *action)
+{
+	m_filterMimegroup = (action->text() == tr("All")) ? "" : action->text();
+	qDebug() << action->text() << "Compared with" << m_filterMimegroup;
+	m_searchBox->clear();
 }
 
 void SelectDefaultApplication::showHelp()
