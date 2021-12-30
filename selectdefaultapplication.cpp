@@ -29,7 +29,7 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent) : QWidget(pa
 What?
 */
 	// Check that we shit with multiple .desktop files, but some nodisplay files
-	for (const QString &appId : m_supportedMimetypes.keys()) {
+//	for (const QString &appId : m_supportedMimetypes.keys()) {
 /*
 This is impossible now that app ids don't come from random shit in their Exec key
 
@@ -44,13 +44,15 @@ This is impossible now that app ids don't come from random shit in their Exec ke
 /*
 This should be impossible, but do more thinking
 */
+/*
 		if (m_applicationNames[appId].isEmpty()) {
 			qWarning() << "Missing name" << appId;
 			m_applicationNames[appId] = appId;
 		}
-	}
+*/
+//	}
 
-	// Preload up front, so it doesn't get sluggish when selecting applications
+	// Preload icons up front, so it doesn't get sluggish when selecting applications
 	// supporting a lot
 	const QIcon unknownIcon = QIcon::fromTheme("unknown");
 
@@ -110,13 +112,10 @@ This should be impossible, but do more thinking
 		m_mimeTypeIcons[mimetypeName] = unknownIcon;
 	}
 
-	QHBoxLayout *mainLayout = new QHBoxLayout;
-	setLayout(mainLayout);
-	m_applicationList = new QTreeWidget;
-	mainLayout->addWidget(m_applicationList);
-
-	QGridLayout *rightLayout = new QGridLayout;
-	mainLayout->addLayout(rightLayout);
+	m_applicationList = new QListWidget;
+	m_applicationList->setSelectionMode(QAbstractItemView::SingleSelection);
+// TODO allow user to search for applications
+	populateApplicationList("");
 
 	m_setDefaultButton = new QPushButton(
 		tr("Set as default application for these file types"));
@@ -125,9 +124,18 @@ This should be impossible, but do more thinking
 	m_mimetypeList = new QListWidget;
 	m_mimetypeList->setSelectionMode(QAbstractItemView::MultiSelection);
 
+	QGridLayout *rightLayout = new QGridLayout;
 	rightLayout->addWidget(m_mimetypeList);
 	rightLayout->addWidget(m_setDefaultButton);
 
+	QHBoxLayout *mainLayout = new QHBoxLayout;
+	setLayout(mainLayout);
+	mainLayout->addWidget(m_applicationList);
+	mainLayout->addLayout(rightLayout);
+
+// Populate the left listlayout with applications
+// Moved to up with its initialization in the refactor
+/*
 	QStringList types = m_applications.keys();
 	std::sort(types.begin(), types.end());
 	for (const QString &type : types) {
@@ -151,8 +159,9 @@ This should be impossible, but do more thinking
 		m_applicationList->addTopLevelItem(typeItem);
 	}
 	m_applicationList->setHeaderHidden(true);
+*/
 
-	connect(m_applicationList, &QTreeWidget::itemSelectionChanged, this,
+	connect(m_applicationList, &QListWidget::itemSelectionChanged, this,
 		&SelectDefaultApplication::onApplicationSelected);
 	connect(m_setDefaultButton, &QPushButton::clicked, this,
 		&SelectDefaultApplication::onSetDefaultClicked);
@@ -177,19 +186,17 @@ void SelectDefaultApplication::onApplicationSelected()
 	m_setDefaultButton->setEnabled(false);
 	m_mimetypeList->clear();
 
-	QList<QTreeWidgetItem *> selectedItems =
+	QList<QListWidgetItem *> selectedItems =
 		m_applicationList->selectedItems();
 	if (selectedItems.count() != 1) {
 		return;
 	}
 
-	const QTreeWidgetItem *item = selectedItems.first();
-	if (!item->parent()) {
-		return;
-	}
+	const QListWidgetItem *item = selectedItems.first();
 
-	const QString mimetypeGroup = item->parent()->text(0);
-	const QString application = item->data(0, Qt::UserRole).toString();
+	//const QString mimetypeGroup = item->parent()->text(0);
+	//const QString application = item->data(0, Qt::UserRole).toString();
+	const QString application = item->data(0).toString();
 
 	QStringList supported = m_supportedMimetypes.values(application);
 
@@ -207,9 +214,13 @@ void SelectDefaultApplication::onApplicationSelected()
 	supported.removeDuplicates();
 
 	for (const QString &supportedMime : supported) {
+/*
+TODO allow the user to check different mimetype groups to see only applications that affect those groups, and only associations in those groups
+
 		if (!supportedMime.startsWith(mimetypeGroup)) {
 			continue;
 		}
+*/
 		const QMimeType mimetype =
 			m_mimeDb.mimeTypeForName(supportedMime);
 		const QString mimeName = mimetype.name();
@@ -282,6 +293,8 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 	QString appId = fileInfo.fileName();
 	// The mimetypes the application can support
 	QStringList mimetypes;
+	// The name of the application in its desktop entry
+	// Used as the primary key with which associations are made
 	QString appName;
 	QString iconName;
 
@@ -369,21 +382,23 @@ See previous comment
 	}
 */
 
-	if (!appName.isEmpty() && m_applicationNames[appId].isEmpty()) {
+//	if (!appName.isEmpty() && m_applicationNames[appId].isEmpty()) {
 /*
 See how often collisions occur
 */
+/*
 for (QString otherAppId : m_applicationNames.keys()) {
 	if (m_applicationNames[otherAppId] == appName) {
 		qDebug() << "Apps " << appId << " and " << otherAppId << " share name " << appName;
 	}
 }
+*/
 /*
 Based on this, it seems necessary to group mimetypes by application name, rather than id.
 A refactor is required
 */
-		m_applicationNames[appId] = appName;
-	}
+//		m_applicationNames[appId] = appName;
+//	}
 
 	if (mimetypes.isEmpty()) {
 		return;
@@ -480,6 +495,7 @@ TODO we will need to associate both a mimetype and an appName (which will really
 
 /*
 Doesn't appear to validate that it is a mimetype, which isn't good practice I think
+Nevermind behaves correctly
 */
 			const QString mimetype =
 				m_mimeDb.mimeTypeForName(line.split('=')
@@ -502,7 +518,7 @@ Later...: Yeah I tested it and this is a bug
 		qDebug() << "Unable to open file for reading";
 /*
 If we can't open the file for reading, we better stop before opening for writing and deleting it
-Unless we check and the file isn't there at all
+Unless we check explicitely and the file isn't there at all
 */
 	}
 
@@ -525,29 +541,27 @@ Unless we check and the file isn't there at all
 				   desktopFile + '\n')
 				   .toUtf8());
 	}
-
-	return;
 }
 
 void SelectDefaultApplication::loadIcons(const QString &path)
 {
-	QFileInfo fi(path);
-	if (!fi.exists() || !fi.isDir()) {
+	QFileInfo icon_file(path);
+	if (!icon_file.exists() || !icon_file.isDir()) {
 		return;
 	}
 	// TODO: avoid hardcoding
 	QStringList imageTypes({ "*.svg", "*.svgz", "*.png", "*.xpm" });
-	QDirIterator it(path, imageTypes, QDir::Files,
+	QDirIterator iter(path, imageTypes, QDir::Files,
 			QDirIterator::Subdirectories);
 
-	while (it.hasNext()) {
-		it.next();
-		fi = it.fileInfo();
+	while (iter.hasNext()) {
+		iter.next();
+		icon_file = iter.fileInfo();
 
-		const QString name = fi.completeBaseName();
+		const QString name = icon_file.completeBaseName();
 		if (m_iconPaths.contains(name)) {
 			continue;
 		}
-		m_iconPaths[name] = fi.filePath();
+		m_iconPaths[name] = icon_file.filePath();
 	}
 }
