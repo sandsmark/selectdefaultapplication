@@ -18,7 +18,7 @@ public:
 	~SelectDefaultApplication();
 
 private slots:
-	void onMimetypeSelected();
+	void onApplicationSelected();
 	void onSetDefaultClicked();
 
 private:

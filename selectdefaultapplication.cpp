@@ -64,6 +64,7 @@ This should be impossible, but do more thinking
 		loadIcons(searchPath);
 	}
 
+	// Set m_mimeTypeIcons[mimetypeName] to an appropriate icon
 	for (const QString &mimetypeName : m_supportedMimetypes.values()) {
 		if (m_mimeTypeIcons.contains(mimetypeName)) {
 			continue;
@@ -152,7 +153,7 @@ This should be impossible, but do more thinking
 	m_applicationList->setHeaderHidden(true);
 
 	connect(m_applicationList, &QTreeWidget::itemSelectionChanged, this,
-		&SelectDefaultApplication::onMimetypeSelected);
+		&SelectDefaultApplication::onApplicationSelected);
 	connect(m_setDefaultButton, &QPushButton::clicked, this,
 		&SelectDefaultApplication::onSetDefaultClicked);
 }
@@ -161,7 +162,17 @@ SelectDefaultApplication::~SelectDefaultApplication()
 {
 }
 
+/*
+Actually is called when you select an APPLICATION
+Holy shit this is negative quality code
+
+Populates the right side of the screen. Selects all the mimetypes that application can natively support
+TODO distinguish between mimetypes the application currently is the default of, mimetypes the application natively supports, children of the application's supported types
+Currently only distinguishes between the latter two
+
 void SelectDefaultApplication::onMimetypeSelected()
+*/
+void SelectDefaultApplication::onApplicationSelected()
 {
 	m_setDefaultButton->setEnabled(false);
 	m_mimetypeList->clear();
@@ -264,7 +275,7 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 		return;
 	}
 
-	// The filename of the desktop file as a relative path from the ApplicationLocation directory it is in.
+	// The filename of the desktop file
 	QString appId = fileInfo.fileName();
 	// The mimetypes the application can support
 	QStringList mimetypes;
@@ -356,6 +367,18 @@ See previous comment
 */
 
 	if (!appName.isEmpty() && m_applicationNames[appId].isEmpty()) {
+/*
+See how often collisions occur
+*/
+for (QString otherAppId : m_applicationNames.keys()) {
+	if (m_applicationNames[otherAppId] == appName) {
+		qDebug() << "Apps " << appId << " and " << otherAppId << " share name " << appName;
+	}
+}
+/*
+Based on this, it seems necessary to group mimetypes by application name, rather than id.
+A refactor is required
+*/
 		m_applicationNames[appId] = appName;
 	}
 
@@ -363,8 +386,13 @@ See previous comment
 		return;
 	}
 
+/*
+Apparently compilers these days literally cannot tell when a variable is not used or something, when compiling with -Wall -Werror on
+What the fuck
+
 	const QMimeType octetStream =
 		m_mimeDb.mimeTypeForName("application/octet-stream");
+*/
 	for (const QString &readMimeName : mimetypes) {
 		// Resolve aliases etc
 		const QMimeType mimetype =
@@ -373,11 +401,17 @@ See previous comment
 			continue;
 		}
 
+/*
+I don't see what the parentMimeTypes() stuff is for
+As far as I can tell it just makes it seem like we support opening .zips if we have a oxps viewer or .gzips if we have a .gzpdf viewer
+Which is clearly untrue
+*/
 		const QString mimetypeName = mimetype.name();
 		for (const QString &parent : mimetype.parentMimeTypes()) {
 			if (parent == "application/octet-stream") {
 				break;
 			}
+qDebug() << "child mime types: " << parent << " to " << mimetypeName;
 			m_childMimeTypes.insert(parent, mimetypeName);
 		}
 		if (m_supportedMimetypes.contains(appId, mimetypeName)) {
