@@ -241,6 +241,9 @@ void SelectDefaultApplication::onSetDefaultClicked()
 	}
 
 	const QTreeWidgetItem *item = selectedItems.first();
+/*
+How could this possibly happen?
+*/
 	if (!item->parent()) {
 		return;
 	}
@@ -401,17 +404,11 @@ What the fuck
 			continue;
 		}
 
-/*
-I don't see what the parentMimeTypes() stuff is for
-As far as I can tell it just makes it seem like we support opening .zips if we have a oxps viewer or .gzips if we have a .gzpdf viewer
-Which is clearly untrue
-*/
 		const QString mimetypeName = mimetype.name();
 		for (const QString &parent : mimetype.parentMimeTypes()) {
 			if (parent == "application/octet-stream") {
 				break;
 			}
-qDebug() << "child mime types: " << parent << " to " << mimetypeName;
 			m_childMimeTypes.insert(parent, mimetypeName);
 		}
 		if (m_supportedMimetypes.contains(appId, mimetypeName)) {
@@ -433,7 +430,12 @@ qDebug() << "child mime types: " << parent << " to " << mimetypeName;
 void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QString> &mimetypes,
 			const QSet<QString> &unselectedMimetypes)
 {
+/*
+TODO we will need to associate both a mimetype and a filename to an appName (which will really be an appName then and not appId), but for now appName is the desktopFile
+
 	QString desktopFile = m_desktopFileNames.value(appName);
+*/
+	const QString &desktopFile = appName;
 	if (desktopFile.isEmpty()) {
 		qWarning() << "invalid" << appName;
 		return;
@@ -476,6 +478,9 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 				continue;
 			}
 
+/*
+Doesn't appear to validate that it is a mimetype, which isn't good practice I think
+*/
 			const QString mimetype =
 				m_mimeDb.mimeTypeForName(line.split('=')
 								 .first()
@@ -485,11 +490,20 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 			    !unselectedMimetypes.contains(mimetype)) {
 				existingAssociations.append(line);
 			}
+/*
+I'm pretty sure if unselectedMimetypes contains mimetype but .second().trimmed()).name() isn't equal to desktopFile then we should also add it to existingAssociations
+
+Later...: Yeah I tested it and this is a bug
+*/
 		}
 
 		file.close();
 	} else {
 		qDebug() << "Unable to open file for reading";
+/*
+If we can't open the file for reading, we better stop before opening for writing and deleting it
+Unless we check and the file isn't there at all
+*/
 	}
 
 	if (!file.open(QIODevice::WriteOnly)) {
@@ -508,7 +522,7 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 
 	for (const QString &mimetype : mimetypes) {
 		file.write(QString(mimetype + '=' +
-				   m_desktopFileNames[appName] + '\n')
+				   desktopFile + '\n')
 				   .toUtf8());
 	}
 
