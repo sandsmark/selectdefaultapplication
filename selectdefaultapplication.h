@@ -50,8 +50,8 @@ private:
 	QSet<QString> m_mimegroups;
 	// Global variable to match selected mimegroup on
 	QString m_filterMimegroup;
-	// Multi-hashtable with keys as application names and values as mimetypes
-	QMultiHash<QString, QString> m_defaultApps;
+	// Multi-hashtable with keys as mimetypes and values as application names
+	QHash<QString, QString> m_defaultApps;
 	// Multi-hashtable with keys as .desktop files and values as mimetypes, read from mimeapps.list
 	// Note this is opposite how they are actually stored. It is done this way so that we can read mimeapps.list before
 	// parsing anything else and then as we loop over all .desktop files, fill up the associations between programs and

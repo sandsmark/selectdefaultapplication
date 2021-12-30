@@ -186,7 +186,7 @@ void SelectDefaultApplication::onApplicationSelected()
 	m_middleBanner->setText(appName + tr(" can open these filetypes:"));
 	m_rightBanner->setText(tr("Configured mimetypes ") + appName + tr(" will open:"));
 	m_currentDefaultApps->clear();
-	for (QString &mimetype : m_defaultApps.values(appName)) {
+	for (QString &mimetype : m_defaultApps.keys(appName)) {
 		addToMimetypeList(m_currentDefaultApps, mimetype, false);
 	}
 
@@ -324,7 +324,7 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 	// Note that this program is the one that can edit some files from the defaults, if it is
 	if (m_defaultDesktopEntries.contains(appFile)) {
 		for (QString &mimetype : m_defaultDesktopEntries.values(appFile)) {
-			m_defaultApps.insert(appName, mimetype);
+			m_defaultApps[mimetype] = appName;
 		}
 	}
 
@@ -429,6 +429,7 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 		// TODO If we can't open the file for reading, we better stop before opening for writing and deleting it
 	}
 
+	// Write the file
 	if (!file.open(QIODevice::WriteOnly)) {
 		QMessageBox::warning(this, tr("Failed to store settings"), file.errorString());
 		return;
@@ -443,8 +444,15 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 	}
 
 	for (const QString &mimetype : mimetypes) {
-		file.write(QString(mimetype + '=' + m_apps[appName][mimetype] + '\n').toUtf8());
+		const QString appFile = m_apps[appName][mimetype];
+		file.write(QString(mimetype + '=' + appFile + '\n').toUtf8());
+		// Update UI also
+		m_defaultApps[mimetype] = appName;
 	}
+
+	// Redraw and make the button unclickable so there is always user feedback
+	onApplicationSelected();
+	m_setDefaultButton->setEnabled(false);
 }
 
 void SelectDefaultApplication::readCurrentDefaultMimetypes()
@@ -563,7 +571,8 @@ void SelectDefaultApplication::showHelp()
 	dialog->exec();
 }
 
-bool SelectDefaultApplication::applicationHasAnyCorrectMimetype(const QString &appName) {
+bool SelectDefaultApplication::applicationHasAnyCorrectMimetype(const QString &appName)
+{
 	for (QString appFile : m_apps[appName].keys()) {
 		if (appFile.startsWith(m_filterMimegroup)) {
 			return true;
