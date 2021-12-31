@@ -325,7 +325,7 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 
 	for (const QString &readMimeName : mimetypes) {
 		// Resolve aliases etc
-		const QMimeType mimetype = m_mimeDb.mimeTypeForData(readMimeName.trimmed());
+		const QMimeType mimetype = m_mimeDb.mimeTypeForName(readMimeName.trimmed());
 		QString mimetypeName = mimetype.name();
 		// There appears to be a bug in Qt https://bugreports.qt.io/browse/QTBUG-99509, hack around it
 		if (mimetypeName == "application/pkcs12") {
