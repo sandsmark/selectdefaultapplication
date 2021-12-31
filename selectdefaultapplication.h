@@ -40,6 +40,7 @@ private:
 	void readCurrentDefaultMimetypes();
 	bool applicationHasAnyCorrectMimetype(const QString &appName);
 	void onApplicationSelectedLogic(bool allowEnable);
+	const QString wrapperMimeTypeForName(const QString &name);
 
 	// Hashtable of application names to hashtables of mimetypes to .desktop file entries
 	QHash<QString, QHash<QString, QString> > m_apps;

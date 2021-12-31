@@ -44,6 +44,7 @@ SelectDefaultApplication::SelectDefaultApplication(QWidget *parent, bool isVerbo
 			if (m_mimeTypeIcons.contains(mimetypeName)) {
 				continue;
 			}
+			// Here we actually want to use the real mimetype, because we need to access its iconName
 			const QMimeType mimetype = m_mimeDb.mimeTypeForName(mimetypeName);
 
 			QString iconName = mimetype.iconName();
@@ -325,16 +326,8 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 
 	for (const QString &readMimeName : mimetypes) {
 		// Resolve aliases etc
-		const QMimeType mimetype = m_mimeDb.mimeTypeForName(readMimeName.trimmed());
-		QString mimetypeName = mimetype.name();
-		// There appears to be a bug in Qt https://bugreports.qt.io/browse/QTBUG-99509, hack around it
-		if (mimetypeName == "application/pkcs12") {
-			mimetypeName = "application/x-pkcs12";
-		} else if (readMimeName.startsWith("x-scheme-handler/")) {
-			// x-scheme-handler is not a valid mimetype for a file, but we do want to be able to set applications as the default handlers for it.
-			// Assumes all x-scheme-handler/* is valid
-			mimetypeName = readMimeName.trimmed();
-		} else if (mimetypeName == "") {
+		QString mimetypeName = wrapperMimeTypeForName(readMimeName);
+		if (mimetypeName == "") {
 			// An invalid QMimeType returns "" for .name(), so if it occurs then we should ignore it
 			if (isVerbose) {
 				qDebug() << "In file " << appName << " mimetype " << readMimeName
@@ -347,13 +340,13 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 		// So applications that can edit parent mimetypes can also have associations formed to their child mimetypes
 		// Unless the parent is 'application/octet-stream' because I guess a lot of stuff has that as its parent
 		// Example: Kate editing text/plain can edit C source code
-		if (mimetype.isValid()) {
-			for (const QString &parent : mimetype.parentMimeTypes()) {
-				if (parent == "application/octet-stream") {
-					break;
-				}
-				m_childMimeTypes.insert(parent, mimetypeName);
+		const QMimeType mimetype = m_mimeDb.mimeTypeForName(readMimeName.trimmed());
+		// if !mimetype.isValid() this just won't enter the loop
+		for (const QString &parent : mimetype.parentMimeTypes()) {
+			if (parent == "application/octet-stream") {
+				break;
 			}
+			m_childMimeTypes.insert(parent, mimetypeName);
 		}
 
 		if (mimetypeName.count('/') != 1) {
@@ -417,16 +410,16 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 				continue;
 			}
 
-			const QString mimetype = m_mimeDb.mimeTypeForName(line.split('=').first().trimmed()).name();
-			if (!mimetypes.contains(mimetype) && !unselectedMimetypes.contains(mimetype)) {
+			const QString mimetypeName = wrapperMimeTypeForName(line.split('=').first().trimmed());
+			if (!mimetypes.contains(mimetypeName) && !unselectedMimetypes.contains(mimetypeName)) {
 				existingAssociations.append(line);
 				continue;
 			}
 
 			// Ensure that if a mimetype is unselected but set as default for a different application, we don't remove its entry from configuration
-			if (unselectedMimetypes.contains(mimetype)) {
+			if (unselectedMimetypes.contains(mimetypeName)) {
 				const QString handlingAppFile = line.split('=')[1];
-				const QString appFile = m_apps[appName].value(mimetype);
+				const QString appFile = m_apps[appName].value(mimetypeName);
 				if (appFile != handlingAppFile && appFile != "") {
 					existingAssociations.append(line);
 				}
@@ -497,7 +490,7 @@ void SelectDefaultApplication::readCurrentDefaultMimetypes()
 				continue;
 			}
 
-			const QString mimetype = m_mimeDb.mimeTypeForName(line.split('=').first().trimmed()).name();
+			const QString mimetype = wrapperMimeTypeForName(line.split('=').first().trimmed());
 			const QString appFile = line.split('=')[1];
 			m_defaultDesktopEntries.insert(appFile, mimetype);
 		}
@@ -596,4 +589,21 @@ bool SelectDefaultApplication::applicationHasAnyCorrectMimetype(const QString &a
 		}
 	}
 	return false;
+}
+
+// Returns the value of m_mimeDb.mimeTypeForName(name) but
+// mimeTypeForName(application/x-pkcs12) always returns application/x-pkcs12 instead of application/pkcs12
+// If 
+const QString SelectDefaultApplication::wrapperMimeTypeForName(const QString &name) {
+	const QMimeType mimetype = m_mimeDb.mimeTypeForName(name);
+	QString mimetypeName = mimetype.name();
+	// There appears to be a bug in Qt https://bugreports.qt.io/browse/QTBUG-99509, hack around it
+	if (mimetypeName == "application/pkcs12") {
+		mimetypeName = "application/x-pkcs12";
+	} else if (name.startsWith("x-scheme-handler/")) {
+		// x-scheme-handler is not a valid mimetype for a file, but we do want to be able to set applications as the default handlers for it.
+		// Assumes all x-scheme-handler/* is valid
+		mimetypeName = name;
+	}
+	return mimetypeName;
 }
