@@ -338,15 +338,16 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 	for (const QString &readMimeName : mimetypes) {
 		// Resolve aliases etc
 		const QMimeType mimetype = m_mimeDb.mimeTypeForName(readMimeName.trimmed());
-		if (!mimetype.isValid()) {
+		if (!mimetype.isValid() && !readMimeName.startsWith("x-scheme-handler/")) {
 			if (isVerbose) {
 				// TODO This happens a TON. Why?
 				qDebug() << "In file " << appName << " mimetype " << readMimeName
-					 << " is invalid. Ignoring...";
+					 << " is invalid. Ignoring..." << mimetype.name();
 			}
 			continue;
 		}
-		const QString mimetypeName = mimetype.name();
+		const QString mimetypeName = (mimetype.name() == "") ? readMimeName.trimmed() : mimetype.name();
+qDebug() << readMimeName << "Corresponds to" << mimetypeName;
 
 		// Create a database of mimetypes this application is a child of
 		// So applications that can edit parent mimetypes can also have associations formed to their child mimetypes
