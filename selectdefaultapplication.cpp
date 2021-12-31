@@ -223,24 +223,12 @@ void SelectDefaultApplication::onApplicationSelectedLogic(bool allowEnabled)
 
 	m_setDefaultButton->setEnabled(allowEnabled && m_mimetypeList->count() > 0);
 }
-void SelectDefaultApplication::addToMimetypeList(QListWidget *list, const QString &mimeDirtyName, const bool selected)
+void SelectDefaultApplication::addToMimetypeList(QListWidget *list, const QString &mimetypeName, const bool selected)
 {
-	// I didn't believe this was necessary, I tested, it is necessary. application/x-pkcs12 showed up here but is converted to application/pkcs12
-	const QMimeType mimetype = m_mimeDb.mimeTypeForName(mimeDirtyName);
-	const QString mimeName = mimetype.name();
-
-	QString name = mimetype.filterString().trimmed();
-	if (name.isEmpty()) {
-		name = mimetype.comment().trimmed();
-	}
-	if (name.isEmpty()) {
-		name = mimeName;
-	} else {
-		name += '\n' + mimeName;
-	}
+	QString name = mimetypeName;
 	QListWidgetItem *item = new QListWidgetItem(name);
-	item->setData(Qt::UserRole, mimeName);
-	item->setIcon(m_mimeTypeIcons[mimeDirtyName]);
+	item->setData(Qt::UserRole, mimetypeName);
+	item->setIcon(m_mimeTypeIcons[mimetypeName]);
 	list->addItem(item);
 	item->setSelected(selected);
 }
@@ -337,27 +325,35 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 
 	for (const QString &readMimeName : mimetypes) {
 		// Resolve aliases etc
-		const QMimeType mimetype = m_mimeDb.mimeTypeForName(readMimeName.trimmed());
-		if (!mimetype.isValid() && !readMimeName.startsWith("x-scheme-handler/")) {
+		const QMimeType mimetype = m_mimeDb.mimeTypeForData(readMimeName.trimmed());
+		QString mimetypeName = mimetype.name();
+		// There appears to be a bug in Qt https://bugreports.qt.io/browse/QTBUG-99509, hack around it
+		if (mimetypeName == "application/pkcs12") {
+			mimetypeName = "application/x-pkcs12";
+		} else if (readMimeName.startsWith("x-scheme-handler/")) {
+			// x-scheme-handler is not a valid mimetype for a file, but we do want to be able to set applications as the default handlers for it.
+			// Assumes all x-scheme-handler/* is valid
+			mimetypeName = readMimeName.trimmed();
+		} else if (mimetypeName == "") {
+			// An invalid QMimeType returns "" for .name(), so if it occurs then we should ignore it
 			if (isVerbose) {
-				// TODO This happens a TON. Why?
 				qDebug() << "In file " << appName << " mimetype " << readMimeName
-					 << " is invalid. Ignoring..." << mimetype.name();
+					 << " is invalid. Ignoring...";
 			}
 			continue;
 		}
-		const QString mimetypeName = (mimetype.name() == "") ? readMimeName.trimmed() : mimetype.name();
-qDebug() << readMimeName << "Corresponds to" << mimetypeName;
 
 		// Create a database of mimetypes this application is a child of
 		// So applications that can edit parent mimetypes can also have associations formed to their child mimetypes
 		// Unless the parent is 'application/octet-stream' because I guess a lot of stuff has that as its parent
 		// Example: Kate editing text/plain can edit C source code
-		for (const QString &parent : mimetype.parentMimeTypes()) {
-			if (parent == "application/octet-stream") {
-				break;
+		if (mimetype.isValid()) {
+			for (const QString &parent : mimetype.parentMimeTypes()) {
+				if (parent == "application/octet-stream") {
+					break;
+				}
+				m_childMimeTypes.insert(parent, mimetypeName);
 			}
-			m_childMimeTypes.insert(parent, mimetypeName);
 		}
 
 		if (mimetypeName.count('/') != 1) {
