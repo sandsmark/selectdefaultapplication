@@ -411,7 +411,7 @@ void SelectDefaultApplication::setDefault(const QString &appName, QSet<QString> 
 				continue;
 			}
 
-			const QString mimetype = m_mimeDb.mimeTypeForName(line.split('=').first().trimmed()).name();
+			const QString mimetype = wrapperMimeTypeForName(line.split('=').first().trimmed());
 			// If we aren't setting this mimetype, leave any entry, even others that this application owns
 			if (!mimetypes.contains(mimetype)) {
 				existingAssociations.append(line);
