@@ -226,8 +226,8 @@ void SelectDefaultApplication::onApplicationSelectedLogic(bool allowEnabled)
 }
 void SelectDefaultApplication::addToMimetypeList(QListWidget *list, const QString &mimetypeName, const bool selected)
 {
-	QString name = mimetypeName;
-	QListWidgetItem *item = new QListWidgetItem(name);
+	QString description = mimetypeDescription(mimetypeName);
+	QListWidgetItem *item = new QListWidgetItem(description);
 	item->setData(Qt::UserRole, mimetypeName);
 	item->setIcon(m_mimeTypeIcons[mimetypeName]);
 	list->addItem(item);
@@ -638,19 +638,42 @@ bool SelectDefaultApplication::applicationHasAnyCorrectMimetype(const QString &a
 	return false;
 }
 
+const char *X_SCHEME_HANDLER = "x-scheme-handler/";
 // Returns the value of m_mimeDb.mimeTypeForName(name) but
 // mimeTypeForName(application/x-pkcs12) always returns application/x-pkcs12 instead of application/pkcs12
-// If 
+// If starts with x-scheme-handler, instead just returns the argument
 const QString SelectDefaultApplication::wrapperMimeTypeForName(const QString &name) {
+	if (name.startsWith(X_SCHEME_HANDLER)) {
+		// x-scheme-handler is not a valid mimetype for a file, but we do want to be able to set applications as the default handlers for it.
+		// Assumes all x-scheme-handler/* is valid
+		return name;
+	}
 	const QMimeType mimetype = m_mimeDb.mimeTypeForName(name);
 	QString mimetypeName = mimetype.name();
 	// There appears to be a bug in Qt https://bugreports.qt.io/browse/QTBUG-99509, hack around it
 	if (mimetypeName == "application/pkcs12") {
 		mimetypeName = "application/x-pkcs12";
-	} else if (name.startsWith("x-scheme-handler/")) {
-		// x-scheme-handler is not a valid mimetype for a file, but we do want to be able to set applications as the default handlers for it.
-		// Assumes all x-scheme-handler/* is valid
-		mimetypeName = name;
 	}
 	return mimetypeName;
+}
+
+const QString SelectDefaultApplication::mimetypeDescription(QString name) {
+	if (name.startsWith(X_SCHEME_HANDLER)) {
+		// x-scheme-handler is not a valid mimetype for a file, but we do want to be able to set applications as the default handlers for it.
+		// Assumes all x-scheme-handler/* is valid
+		return "Handles " + name.mid(strlen(X_SCHEME_HANDLER)) + ":// URIs\n" + name;
+	}
+	// There appears to be a bug in Qt https://bugreports.qt.io/browse/QTBUG-99509, hack around it
+	if (name == "application/pkcs12") {
+		name = "application/x-pkcs12";
+	}
+	const QMimeType mimetype = m_mimeDb.mimeTypeForName(name);
+	QString desc = mimetype.filterString().trimmed();
+	if (desc.isEmpty()) {
+		desc = mimetype.comment().trimmed();
+	}
+	if (!desc.isEmpty()) {
+		desc += '\n';
+	}
+	return desc + name;
 }

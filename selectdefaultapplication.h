@@ -47,6 +47,7 @@ private:
 	void onApplicationSelectedLogic(bool allowEnable);
 	const QString wrapperMimeTypeForName(const QString &name);
 	overwriteConfirm getOverwriteConfirmation(const QHash<QString, QString> &warnings);
+	const QString mimetypeDescription(QString name);
 
 	// Hashtable of application names to hashtables of mimetypes to .desktop file entries
 	QHash<QString, QHash<QString, QString> > m_apps;
