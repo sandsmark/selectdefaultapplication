@@ -201,7 +201,7 @@ void SelectDefaultApplication::onApplicationSelectedLogic(bool allowEnabled)
 
 	// E. g. kwrite and kate only indicate support for "text/plain", but they're nice for things like C source files.
 	QSet<QString> impliedSupported;
-	for (const QString &mimetype : officiallySupported) {
+	for (const QString &mimetype : officiallySupported.keys()) {
 		for (const QString &child : m_childMimeTypes.values(mimetype)) {
 			// Ensure that the officially supported keys don't contain this value
 			if (!officiallySupported.contains(child)) {
