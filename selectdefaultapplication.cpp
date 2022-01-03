@@ -190,8 +190,8 @@ void SelectDefaultApplication::onApplicationSelectedLogic(bool allowEnabled)
 	const QString appName = item->data(0).toString();
 
 	// Set banners and right widget
-	m_middleBanner->setText(appName + tr(" can open these filetypes:"));
-	m_rightBanner->setText(tr("Configured mimetypes ") + appName + tr(" will open:"));
+	m_middleBanner->setText(appName + tr(" can open:"));
+	m_rightBanner->setText(appName + tr(" currently opens:"));
 	m_currentDefaultApps->clear();
 	for (QString &mimetype : m_defaultApps.keys(appName)) {
 		addToMimetypeList(m_currentDefaultApps, mimetype, false);
