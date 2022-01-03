@@ -271,7 +271,7 @@ void SelectDefaultApplication::onSetDefaultClicked()
 		}
 	}
 
-	setDefault(application, selected, unselected);
+	setDefault(application, selected);
 }
 
 void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
@@ -383,8 +383,8 @@ void SelectDefaultApplication::loadDesktopFile(const QFileInfo &fileInfo)
 	}
 }
 
-void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QString> &mimetypes,
-					  const QSet<QString> &unselectedMimetypes)
+// Removes values from mimetypes if warnings exist and the user requests to do a non-destructive change
+void SelectDefaultApplication::setDefault(const QString &appName, QSet<QString> &mimetypes)
 {
 	const QString filePath =
 		QDir(QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)).absoluteFilePath("mimeapps.list");
@@ -393,6 +393,7 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 	// Read in existing mimeapps.list, skipping the lines for the mimetypes we're updating
 	QList<QByteArray> existingContent;
 	QList<QByteArray> existingAssociations;
+	QHash<QString, QString> warnings;
 	if (file.open(QIODevice::ReadOnly)) {
 		bool inCorrectGroup = false;
 		while (!file.atEnd()) {
@@ -421,18 +422,17 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 			}
 
 			const QString mimetype = m_mimeDb.mimeTypeForName(line.split('=').first().trimmed()).name();
-			if (!mimetypes.contains(mimetype) && !unselectedMimetypes.contains(mimetype)) {
+			// If we aren't setting this mimetype, leave any entry, even others that this application owns
+			if (!mimetypes.contains(mimetype)) {
 				existingAssociations.append(line);
 				continue;
 			}
 
-			// Ensure that if a mimetype is unselected but set as default for a different application, we don't remove its entry from configuration
-			if (unselectedMimetypes.contains(mimetype)) {
-				const QString handlingAppFile = line.split('=')[1];
-				const QString appFile = m_apps[appName].value(mimetype);
-				if (appFile != handlingAppFile && appFile != "") {
-					existingAssociations.append(line);
-				}
+			// Ensure that if a mimetype is selected and is set as default for a different application, we warn about it
+			const QString handlingAppFile = line.split('=')[1].trimmed();
+			const QString appFile = m_apps[appName].value(mimetype);
+			if (appFile != handlingAppFile && m_apps[appName].contains(mimetype)) {
+				warnings[mimetype] = handlingAppFile;
 			}
 		}
 
@@ -440,6 +440,24 @@ void SelectDefaultApplication::setDefault(const QString &appName, const QSet<QSt
 	} else {
 		qWarning() << "Unable to open file for reading" << file.errorString();
 		// TODO If we can't open the file for reading, we better stop before opening for writing and deleting it
+	}
+
+	// Display warnings and get user confirmation that we should proceed
+	if (!warnings.isEmpty()) {
+		qDebug() << "Warnings: " << warnings;
+		overwriteConfirm confirm = getOverwriteConfirmation(warnings);
+		if (confirm == CANCEL_CHANGES) {
+			return;
+		}
+		if (confirm == NON_DESTRUCTIVE) {
+			for (QString warningType : warnings) {
+				// Add to existing associations
+				const QString warning = warningType + '=' + warnings[warningType];
+				existingAssociations.append(warning.toUtf8());
+				// Remove from values to set
+				mimetypes.remove(warningType);
+			}
+		}
 	}
 
 	// Write the file
@@ -589,6 +607,15 @@ void SelectDefaultApplication::showHelp()
 		"This program parses all the Desktop Entries on the system, as well as the `mimeapps.list`, to determine what programs exist and which are set as defaults.\n"
 		"Then, when you click to 'set as default for these filetypes', it reads `mimeapps.list`, and sets the keys you have highlighted to the new values.\n"));
 	dialog->exec();
+}
+
+overwriteConfirm SelectDefaultApplication::getOverwriteConfirmation(const QHash<QString, QString> &warnings)
+{
+	overwriteConfirm retval = OVERWRITE_ALL;
+	QDialog *dialog = new QDialog(this);
+
+	dialog->exec();
+	return retval;
 }
 
 bool SelectDefaultApplication::applicationHasAnyCorrectMimetype(const QString &appName)

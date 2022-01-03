@@ -16,6 +16,12 @@ class QTreeWidget;
 class QListWidget;
 class QPushButton;
 
+enum overwriteConfirm {
+	CANCEL_CHANGES,
+	NON_DESTRUCTIVE,
+	OVERWRITE_ALL,
+};
+
 class SelectDefaultApplication : public QWidget {
 	Q_OBJECT
 
@@ -33,13 +39,13 @@ private slots:
 
 private:
 	void loadDesktopFile(const QFileInfo &fileInfo);
-	void setDefault(const QString &appName, const QSet<QString> &mimetypes,
-			const QSet<QString> &unselectedMimetypes);
+	void setDefault(const QString &appName, QSet<QString> &mimetypes);
 	void loadIcons(const QString &path);
 	void addToMimetypeList(QListWidget *list, const QString &mimetypeName, const bool selected);
 	void readCurrentDefaultMimetypes();
 	bool applicationHasAnyCorrectMimetype(const QString &appName);
 	void onApplicationSelectedLogic(bool allowEnable);
+	overwriteConfirm getOverwriteConfirmation(const QHash<QString, QString> &warnings);
 
 	// Hashtable of application names to hashtables of mimetypes to .desktop file entries
 	QHash<QString, QHash<QString, QString> > m_apps;
