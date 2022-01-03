@@ -444,7 +444,6 @@ void SelectDefaultApplication::setDefault(const QString &appName, QSet<QString> 
 
 	// Display warnings and get user confirmation that we should proceed
 	if (!warnings.isEmpty()) {
-qDebug() << "Warnings: " << warnings;
 		overwriteConfirm confirm = getOverwriteConfirmation(warnings);
 		if (confirm == CANCEL_CHANGES) {
 			return;
@@ -453,13 +452,11 @@ qDebug() << "Warnings: " << warnings;
 			for (QString warningType : warnings.keys()) {
 				// Add to existing associations
 				const QString warning = warningType + '=' + warnings[warningType];
-qDebug() << "Warning:" << warning;
 				existingAssociations.append(warning.toUtf8());
 				// Remove from values to set
 				mimetypes.remove(warningType);
 			}
 		}
-qDebug() << "Mimetypes:" << mimetypes;
 	}
 
 	// Write the file
@@ -631,8 +628,7 @@ overwriteConfirm SelectDefaultApplication::getOverwriteConfirmation(const QHash<
 	static_assert(QMessageBox::ApplyRole != QMessageBox::AcceptRole, "Collision in QMessageBox return types!");
 
 	int prompt = dialog->exec();
-qDebug() << prompt;
-	// if (QMessageBox::ApplyRole == prompt) { // For some god-forsaken reason exec returns 1 and not its actual role
+	// if (QMessageBox::ApplyRole == prompt) { // For some god-forsaken reason exec returns 1 and not its actual role, unsure how to ensure this is correct at compile-time
 	if (0 == prompt) {
 		return OVERWRITE_ALL;
 	// if (QMessageBox::AcceptRole == prompt) { // For some god-forsaken reason exec returns 1 and not its actual role
