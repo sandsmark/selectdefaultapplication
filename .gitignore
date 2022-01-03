@@ -1,0 +1,5 @@
+.qmake.stash
+Makefile
+moc_*
+*.o
+selectdefaultapplication
