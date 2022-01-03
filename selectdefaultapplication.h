@@ -17,9 +17,9 @@ class QListWidget;
 class QPushButton;
 
 enum overwriteConfirm {
-	CANCEL_CHANGES,
 	NON_DESTRUCTIVE,
 	OVERWRITE_ALL,
+	CANCEL_CHANGES,
 };
 
 class SelectDefaultApplication : public QWidget {
