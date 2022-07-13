@@ -21,3 +21,9 @@ Links
  * https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html
  * https://specifications.freedesktop.org/shared-mime-info-spec/shared-mime-info-spec-latest.html
 
+
+Compiling
+---------
+
+    qmake my_project.pro
+    make
