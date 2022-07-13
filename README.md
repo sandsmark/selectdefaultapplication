@@ -25,5 +25,5 @@ Links
 Compiling
 ---------
 
-    qmake my_project.pro
+    qmake selectdefaultapplication.pro
     make
